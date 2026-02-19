@@ -2,46 +2,138 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>GPS Navegação</title>
+<title>GPS Radar – BETA 02</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <!-- Leaflet -->
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    background: #000;
-  }
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
 
-  #map {
-    width: 100%;
-    height: 100%;
-  }
+#map {
+  width: 100%;
+  height: 100%;
+}
 
-  .seta-container svg {
-    width: 50px;
-    height: 50px;
-    transform-origin: 50% 50%;
-    transition: transform 0.2s linear;
-  }
+/* =======================
+   SETA
+======================= */
+.seta-container svg {
+  width: 50px;
+  height: 50px;
+  transform-origin: 50% 50%;
+  transition: transform 0.2s linear;
+}
+
+/* =======================
+   PLACA DE VELOCIDADE
+======================= */
+#speedBox {
+  position: fixed;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 90px;
+  height: 90px;
+  background: white;
+  border: 5px solid red;
+  border-radius: 50%;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  z-index: 9999;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+#speedValue {
+  font-size: 32px;
+  font-weight: bold;
+  margin-top: 18px;
+}
+
+#speedUnit {
+  font-size: 14px;
+  margin-top: -6px;
+}
+
+/* =======================
+   BOTÃO CONFIGURAÇÃO
+======================= */
+#configBtn {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border-radius: 50%;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  cursor: pointer;
+}
+
+/* =======================
+   MENU CONFIG
+======================= */
+#configMenu {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  color: white;
+  display: none;
+  z-index: 10000;
+}
+
+#configMenu h2 {
+  margin: 20px;
+}
+
+#closeConfig {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  font-size: 26px;
+  cursor: pointer;
+}
 </style>
 </head>
 
 <body>
+
 <div id="map"></div>
 
+<!-- Velocidade -->
+<div id="speedBox">
+  <div id="speedValue">0</div>
+  <div id="speedUnit">km/h</div>
+</div>
+
+<!-- Botão Config -->
+<div id="configBtn">⚙️</div>
+
+<!-- Menu Config -->
+<div id="configMenu">
+  <div id="closeConfig">✖</div>
+  <h2>Configurações</h2>
+  <p style="margin:20px;">
+    (Opções serão adicionadas nas próximas versões)
+  </p>
+</div>
+
 <script>
-/* ===============================
+/* =======================
    MAPA
-================================ */
+======================= */
 const map = L.map('map', {
   zoomControl: true,
   attributionControl: false
@@ -51,9 +143,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-/* ===============================
-   ÍCONE DA SETA (CENTRO PERFEITO)
-================================ */
+/* =======================
+   SETA
+======================= */
 const setaIcon = L.divIcon({
   className: 'seta-container',
   html: `
@@ -65,16 +157,13 @@ const setaIcon = L.divIcon({
   iconAnchor: [25, 25]
 });
 
-/* ===============================
-   MARCADOR
-================================ */
 const marcador = L.marker([0, 0], {
   icon: setaIcon
 }).addTo(map);
 
-/* ===============================
-   GPS EM TEMPO REAL
-================================ */
+/* =======================
+   GPS + VELOCIDADE
+======================= */
 if ("geolocation" in navigator) {
   navigator.geolocation.watchPosition(
     (pos) => {
@@ -82,35 +171,45 @@ if ("geolocation" in navigator) {
       const lon = pos.coords.longitude;
       const heading = pos.coords.heading ?? 0;
 
-      // Atualiza posição da seta
+      // velocidade (m/s → km/h)
+      let speed = pos.coords.speed;
+      if (speed === null) speed = 0;
+      speed = Math.round(speed * 3.6);
+
+      document.getElementById("speedValue").innerText = speed;
+
       marcador.setLatLng([lat, lon]);
+      map.panTo([lat, lon], { animate: true, duration: 0.4 });
 
-      // Centraliza suavemente
-      map.panTo([lat, lon], {
-        animate: true,
-        duration: 0.5
-      });
-
-      // Rotaciona apenas o SVG (SEM BUG)
       const seta = document.getElementById("setaSvg");
       if (seta) {
         seta.style.transform = `rotate(${heading}deg)`;
       }
     },
-    (err) => {
-      alert("Erro ao acessar GPS");
-      console.error(err);
-    },
+    () => alert("Permita o acesso à localização"),
     {
       enableHighAccuracy: true,
       maximumAge: 0,
       timeout: 10000
     }
   );
-} else {
-  alert("GPS não suportado neste navegador");
 }
+
+/* =======================
+   CONFIG MENU
+======================= */
+const configBtn = document.getElementById("configBtn");
+const configMenu = document.getElementById("configMenu");
+const closeConfig = document.getElementById("closeConfig");
+
+configBtn.onclick = () => {
+  configMenu.style.display = "block";
+};
+
+closeConfig.onclick = () => {
+  configMenu.style.display = "none";
+};
 </script>
+
 </body>
 </html>
-
