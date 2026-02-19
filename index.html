@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Radar SP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+html, body { margin:0; height:100%; }
+#map { height:100%; }
+
+.seta { width:50px; height:50px; }
+</style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+const map = L.map('map').setView([-23.5505, -46.6333], 17);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
+
+const setaIcon = L.divIcon({
+  className: '',
+  html: `
+  <svg class="seta" viewBox="0 0 100 100">
+    <polygon points="50,0 95,100 50,75 5,100" fill="#FFD400"/>
+  </svg>
+  `,
+  iconSize: [50,50],
+  iconAnchor: [25,25]
+});
+
+let marcador = L.marker([-23.5505, -46.6333], { icon: setaIcon }).addTo(map);
+
+if ("geolocation" in navigator) {
+  navigator.geolocation.watchPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const dir = pos.coords.heading || 0;
+
+      marcador.setLatLng([lat, lon]);
+      map.setView([lat, lon]);
+
+      const el = marcador.getElement();
+      if (el) el.style.transform = `rotate(${dir}deg)`;
+    },
+    () => alert("Permita a localização"),
+    { enableHighAccuracy:true }
+  );
+}
+</script>
+</body>
+</html>
