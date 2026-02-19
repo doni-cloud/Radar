@@ -2,11 +2,10 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>GPS Radar – BETA 02</title>
+<title>GPS Radar – BETA 02 (Estável)</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -22,9 +21,7 @@ html, body {
   height: 100%;
 }
 
-/* =======================
-   SETA
-======================= */
+/* SETA */
 .seta-container svg {
   width: 50px;
   height: 50px;
@@ -32,9 +29,7 @@ html, body {
   transition: transform 0.2s linear;
 }
 
-/* =======================
-   PLACA DE VELOCIDADE
-======================= */
+/* PLACA VELOCIDADE */
 #speedBox {
   position: fixed;
   left: 12px;
@@ -48,7 +43,6 @@ html, body {
   text-align: center;
   font-family: Arial, sans-serif;
   z-index: 9999;
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
 
 #speedValue {
@@ -57,14 +51,7 @@ html, body {
   margin-top: 18px;
 }
 
-#speedUnit {
-  font-size: 14px;
-  margin-top: -6px;
-}
-
-/* =======================
-   BOTÃO CONFIGURAÇÃO
-======================= */
+/* CONFIG */
 #configBtn {
   position: fixed;
   top: 12px;
@@ -82,9 +69,6 @@ html, body {
   cursor: pointer;
 }
 
-/* =======================
-   MENU CONFIG
-======================= */
 #configMenu {
   position: fixed;
   inset: 0;
@@ -92,10 +76,6 @@ html, body {
   color: white;
   display: none;
   z-index: 10000;
-}
-
-#configMenu h2 {
-  margin: 20px;
 }
 
 #closeConfig {
@@ -112,30 +92,22 @@ html, body {
 
 <div id="map"></div>
 
-<!-- Velocidade -->
 <div id="speedBox">
   <div id="speedValue">0</div>
-  <div id="speedUnit">km/h</div>
+  <div style="font-size:14px;">km/h</div>
 </div>
 
-<!-- Botão Config -->
 <div id="configBtn">⚙️</div>
 
-<!-- Menu Config -->
 <div id="configMenu">
   <div id="closeConfig">✖</div>
-  <h2>Configurações</h2>
-  <p style="margin:20px;">
-    (Opções serão adicionadas nas próximas versões)
-  </p>
+  <h2 style="margin:20px;">Configurações</h2>
+  <p style="margin:20px;">(Menu funcional – opções entram no BETA 03)</p>
 </div>
 
 <script>
-/* =======================
-   MAPA
-======================= */
+/* ================= MAPA ================= */
 const map = L.map('map', {
-  zoomControl: true,
   attributionControl: false
 }).setView([0, 0], 18);
 
@@ -143,9 +115,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-/* =======================
-   SETA
-======================= */
+/* ================= SETA ================= */
 const setaIcon = L.divIcon({
   className: 'seta-container',
   html: `
@@ -153,63 +123,45 @@ const setaIcon = L.divIcon({
       <polygon points="50,5 95,95 50,75 5,95" fill="#FFD400"/>
     </svg>
   `,
-  iconSize: [50, 50],
-  iconAnchor: [25, 25]
+  iconSize: [50,50],
+  iconAnchor: [25,25]
 });
 
-const marcador = L.marker([0, 0], {
-  icon: setaIcon
-}).addTo(map);
+const marcador = L.marker([0,0], { icon: setaIcon }).addTo(map);
 
-/* =======================
-   GPS + VELOCIDADE
-======================= */
-if ("geolocation" in navigator) {
-  navigator.geolocation.watchPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      const heading = pos.coords.heading ?? 0;
+/* ================= VELOCIDADE MANUAL ================= */
+let lastPos = null;
+let lastTime = null;
 
-      // velocidade (m/s → km/h)
-      let speed = pos.coords.speed;
-      if (speed === null) speed = 0;
-      speed = Math.round(speed * 3.6);
+function calcularVelocidade(lat, lon) {
+  if (!lastPos) {
+    lastPos = { lat, lon };
+    lastTime = Date.now();
+    return 0;
+  }
 
-      document.getElementById("speedValue").innerText = speed;
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
 
-      marcador.setLatLng([lat, lon]);
-      map.panTo([lat, lon], { animate: true, duration: 0.4 });
+  const dLat = toRad(lat - lastPos.lat);
+  const dLon = toRad(lon - lastPos.lon);
 
-      const seta = document.getElementById("setaSvg");
-      if (seta) {
-        seta.style.transform = `rotate(${heading}deg)`;
-      }
-    },
-    () => alert("Permita o acesso à localização"),
-    {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 10000
-    }
-  );
-}
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(toRad(lastPos.lat)) *
+    Math.cos(toRad(lat)) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
 
-/* =======================
-   CONFIG MENU
-======================= */
-const configBtn = document.getElementById("configBtn");
-const configMenu = document.getElementById("configMenu");
-const closeConfig = document.getElementById("closeConfig");
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c;
 
-configBtn.onclick = () => {
-  configMenu.style.display = "block";
-};
+  const now = Date.now();
+  const deltaTime = (now - lastTime) / 1000;
 
-closeConfig.onclick = () => {
-  configMenu.style.display = "none";
-};
-</script>
+  lastPos = { lat, lon };
+  lastTime = now;
 
-</body>
-</html>
+  if (deltaTime === 0) return 0;
+
+  return Math.round((distance / deltaTime) * 3.6);*
+
