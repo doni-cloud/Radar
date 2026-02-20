@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -5,24 +6,26 @@
 <title>GPS Radar Beta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- Leaflet -->
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <style>
 html, body {
   margin: 0;
   padding: 0;
+  height: 100%;
   background: #000;
-  color: #fff;
-  font-family: Arial, sans-serif;
   overflow: hidden;
 }
 
-/* MAPA */
+/* MAPA REAL */
 #map {
-  position: fixed;
-  top: 0;
-  left: 0;
   width: 100%;
   height: 100%;
-  background: #111;
 }
 
 /* SETA */
@@ -32,147 +35,95 @@ html, body {
   left: 50%;
   width: 0;
   height: 0;
-  border-left: 18px solid transparent;
-  border-right: 18px solid transparent;
-  border-bottom: 40px solid #00ffcc;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-bottom: 36px solid #00ffd5;
   transform: translate(-50%, -50%) rotate(0deg);
+  z-index: 999;
   transition: transform 0.2s linear;
 }
 
 /* VELOCIDADE */
 #speedBox {
-  position: fixed;
+  position: absolute;
   left: 10px;
-  top: 40%;
-  background: rgba(0,0,0,0.7);
+  bottom: 50%;
+  background: rgba(0,0,0,0.75);
+  color: #fff;
   padding: 10px 14px;
   border-radius: 8px;
-  font-size: 22px;
-  font-weight: bold;
+  font-size: 20px;
+  font-family: Arial, sans-serif;
+  z-index: 999;
 }
 
 /* CONFIG */
 #configBtn {
-  position: fixed;
+  position: absolute;
   top: 10px;
   right: 10px;
   font-size: 26px;
-  cursor: pointer;
-}
-
-/* MENU */
-#menu {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.95);
-  display: none;
-  padding: 20px;
-}
-
-select {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
+  color: #fff;
+  z-index: 999;
 }
 </style>
 </head>
 
 <body>
 
-<div id="map">
-  <div id="arrow"></div>
-</div>
-
+<div id="map"></div>
+<div id="arrow"></div>
 <div id="speedBox">0 km/h</div>
 <div id="configBtn">⚙️</div>
 
-<div id="menu">
-  <h2>Configurações</h2>
-  <label>Voz do alerta:</label><br><br>
-  <select id="voiceSelect"></select><br><br>
-  <button onclick="closeMenu()">Fechar</button>
-</div>
-
 <script>
-let arrow = document.getElementById("arrow");
-let speedBox = document.getElementById("speedBox");
-let voices = [];
-let selectedVoice = null;
+/* MAPA */
+var map = L.map('map', {
+  zoomControl: false,
+  attributionControl: false
+}).setView([0, 0], 17);
 
-/* VOZ */
-function loadVoices() {
-  voices = speechSynthesis.getVoices();
-  let select = document.getElementById("voiceSelect");
-  select.innerHTML = "";
-
-  voices.forEach((v, i) => {
-    if (v.lang.includes("pt")) {
-      let opt = document.createElement("option");
-      opt.value = i;
-      opt.text = v.name + " (" + v.lang + ")";
-      select.appendChild(opt);
-    }
-  });
-
-  select.onchange = () => {
-    selectedVoice = voices[select.value];
-  };
-
-  if (voices.length > 0) {
-    selectedVoice = voices[0];
-  }
-}
-
-speechSynthesis.onvoiceschanged = loadVoices;
-
-/* ALERTA TESTE */
-function speak(text) {
-  let u = new SpeechSynthesisUtterance(text);
-  if (selectedVoice) u.voice = selectedVoice;
-  u.lang = "pt-BR";
-  speechSynthesis.speak(u);
-}
-
-/* MENU */
-document.getElementById("configBtn").onclick = () => {
-  document.getElementById("menu").style.display = "block";
-};
-
-function closeMenu() {
-  document.getElementById("menu").style.display = "none";
-}
+L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { maxZoom: 19 }
+).addTo(map);
 
 /* GPS */
-if (navigator.geolocation) {
-  navigator.geolocation.watchPosition(pos => {
-    let speed = pos.coords.speed;
-    let heading = pos.coords.heading;
+var firstFix = true;
+
+navigator.geolocation.watchPosition(
+  function (pos) {
+    var lat = pos.coords.latitude;
+    var lon = pos.coords.longitude;
+    var speed = pos.coords.speed;
+    var heading = pos.coords.heading;
+
+    if (firstFix) {
+      map.setView([lat, lon], 17);
+      firstFix = false;
+    } else {
+      map.panTo([lat, lon], { animate: false });
+    }
 
     if (speed !== null) {
-      let kmh = Math.max(0, speed * 3.6).toFixed(0);
-      speedBox.innerText = kmh + " km/h";
+      var kmh = Math.max(0, speed * 3.6).toFixed(0);
+      document.getElementById("speedBox").innerText = kmh + " km/h";
     }
 
     if (heading !== null) {
-      arrow.style.transform =
+      document.getElementById("arrow").style.transform =
         "translate(-50%, -50%) rotate(" + heading + "deg)";
     }
-  }, err => {
+  },
+  function (err) {
     alert("Erro GPS: " + err.message);
-  }, {
+  },
+  {
     enableHighAccuracy: true,
     maximumAge: 0,
-    timeout: 5000
-  });
-}
-
-/* TESTE DE VOZ AUTOMÁTICO */
-setTimeout(() => {
-  speak("Sistema de alerta ativo");
-}, 2000);
+    timeout: 10000
+  }
+);
 </script>
 
 </body>
