@@ -2,17 +2,16 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<title>Navegação GPS Beta 3</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mapa GPS Beta 2</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
 html, body {
   margin: 0;
-  padding: 0;
   height: 100%;
-  background: black;
+  background: #111;
 }
 
 #map {
@@ -20,33 +19,40 @@ html, body {
   height: 100%;
 }
 
+/* Placa velocidade */
 #speedBox {
   position: absolute;
-  left: 12px;
   top: 12px;
+  left: 12px;
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: white;
   border: 6px solid red;
+  background: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 26px;
   font-weight: bold;
-  z-index: 999;
+  z-index: 1000;
 }
 
-#settings {
+/* Botão câmera */
+#freeCam {
   position: absolute;
-  right: 14px;
-  top: 14px;
-  font-size: 26px;
-  background: rgba(0,0,0,0.6);
+  right: 16px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  background: rgba(0,0,0,0.7);
   color: white;
-  padding: 10px;
   border-radius: 50%;
-  z-index: 999;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -55,64 +61,72 @@ html, body {
 
 <div id="map"></div>
 <div id="speedBox">0</div>
-<div id="settings">⚙️</div>
+<div id="freeCam">📷</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// =================== MAPA ===================
-const map = L.map('map').setView([0, 0], 18);
+const map = L.map('map', { zoomControl: false }).setView([0,0], 18);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom: 19
 }).addTo(map);
 
-// =================== LIMITES ===================
-let speedLimit = 50; // urbano
-const speedBox = document.getElementById("speedBox");
+// ================= CONFIG =================
+let followGPS = true;
+let speedLimit = 50;
+let speedBuffer = [];
 
-// =================== ICONES BASE64 ===================
-
-// Radar
-const radarIcon = L.icon({
-  iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAA...",
-  iconSize: [36,36],
-  iconAnchor: [18,18]
-});
-
-// Semáforo
-const semaforoIcon = L.icon({
-  iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAA...",
-  iconSize: [36,36],
-  iconAnchor: [18,18]
-});
-
-// Jeep (seta carro)
+// ================= ICONES =================
 const jeepIcon = L.divIcon({
-  className: '',
-  html: '<div id="jeep" style="width:30px;height:30px;background:black;border-radius:6px;transform:rotate(0deg)"></div>',
-  iconSize: [30,30],
-  iconAnchor: [15,15]
+  html: `<div style="
+    width:28px;
+    height:28px;
+    background:black;
+    border-radius:6px;
+    transform:rotate(0deg);
+  " id="jeep"></div>`,
+  iconSize: [28,28],
+  iconAnchor: [14,14]
 });
 
-// =================== MARKERS FIXOS ===================
-L.marker([-23.5505, -46.6333], {icon: radarIcon}).addTo(map);
-L.marker([-23.5512, -46.6325], {icon: semaforoIcon}).addTo(map);
+const radarIcon = L.icon({
+  iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAA...",
+  iconSize: [32,32],
+  iconAnchor: [16,16]
+});
 
-// =================== AUDIO ===================
-const beepRadar = new Audio("data:audio/mp3;base64,//uQxAA...");
-const beepSemaforo = new Audio("data:audio/mp3;base64,//uQxAA...");
+const semaforoIcon = L.icon({
+  iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAA...",
+  iconSize: [32,32],
+  iconAnchor: [16,16]
+});
 
-// =================== GPS ===================
+// ================= AUDIO =================
+const radarBeep = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEA...");
+const semaforoBeep = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEA...");
+
+// ================= VEICULO =================
 let jeepMarker = null;
-let lastPosition = null;
 
+// ================= FREE CAM =================
+document.getElementById("freeCam").onclick = () => {
+  followGPS = !followGPS;
+  document.getElementById("freeCam").style.background =
+    followGPS ? "rgba(0,0,0,0.7)" : "red";
+};
+
+// ================= GPS =================
 navigator.geolocation.watchPosition(pos => {
   const lat = pos.coords.latitude;
   const lng = pos.coords.longitude;
-  const speed = pos.coords.speed ? (pos.coords.speed * 3.6) : 0;
+  const rawSpeed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
 
-  speedBox.innerText = Math.round(speed);
+  speedBuffer.push(rawSpeed);
+  if (speedBuffer.length > 5) speedBuffer.shift();
+  const speed = speedBuffer.reduce((a,b)=>a+b,0)/speedBuffer.length;
+
+  document.getElementById("speedBox").innerText = Math.round(speed);
 
   if (speed > speedLimit) {
     speedBox.style.background = "red";
@@ -123,22 +137,45 @@ navigator.geolocation.watchPosition(pos => {
   }
 
   if (!jeepMarker) {
-    jeepMarker = L.marker([lat, lng], {icon: jeepIcon}).addTo(map);
-    map.setView([lat, lng], 18);
+    jeepMarker = L.marker([lat,lng], {icon: jeepIcon}).addTo(map);
+    map.setView([lat,lng], 18);
+    loadOSM(lat,lng);
   } else {
-    jeepMarker.setLatLng([lat, lng]);
-    map.panTo([lat, lng]);
+    jeepMarker.setLatLng([lat,lng]);
+    if (followGPS) map.panTo([lat,lng]);
   }
 
-  lastPosition = {lat, lng};
-
-}, err => {
-  alert("Erro GPS: " + err.message);
-}, {
+}, err => alert("Erro GPS: "+err.message), {
   enableHighAccuracy: true,
-  maximumAge: 1000,
   timeout: 10000
 });
+
+// ================= OSM RADAR / SEMÁFORO =================
+function loadOSM(lat,lng) {
+  const query = `
+  [out:json];
+  (
+    node["highway"="speed_camera"](around:1500,${lat},${lng});
+    node["highway"="traffic_signals"](around:1500,${lat},${lng});
+  );
+  out;
+  `;
+
+  fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    body: query
+  })
+  .then(r => r.json())
+  .then(data => {
+    data.elements.forEach(el => {
+      const icon = el.tags.highway === "speed_camera"
+        ? radarIcon
+        : semaforoIcon;
+
+      L.marker([el.lat, el.lon], {icon}).addTo(map);
+    });
+  });
+}
 </script>
 
 </body>
