@@ -3,15 +3,10 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>GPS Radar Beta</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar SP – Beta 2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<!-- Leaflet -->
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
 html, body {
@@ -19,52 +14,58 @@ html, body {
   padding: 0;
   height: 100%;
   background: #000;
-  overflow: hidden;
 }
 
-/* MAPA REAL */
 #map {
-  width: 100%;
   height: 100%;
+  width: 100%;
 }
 
-/* SETA */
-#arrow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-left: 16px solid transparent;
-  border-right: 16px solid transparent;
-  border-bottom: 36px solid #00ffd5;
-  transform: translate(-50%, -50%) rotate(0deg);
-  z-index: 999;
-  transition: transform 0.2s linear;
-}
-
-/* VELOCIDADE */
+/* Velocidade */
 #speedBox {
   position: absolute;
-  left: 10px;
-  bottom: 50%;
+  left: 15px;
+  top: 60px;
   background: rgba(0,0,0,0.75);
   color: #fff;
-  padding: 10px 14px;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
   font-size: 20px;
-  font-family: Arial, sans-serif;
+  font-weight: bold;
   z-index: 999;
 }
 
-/* CONFIG */
+/* Config */
 #configBtn {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 15px;
+  right: 15px;
   font-size: 26px;
   color: #fff;
   z-index: 999;
+  cursor: pointer;
+}
+
+#configPanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 260px;
+  height: 100%;
+  background: #111;
+  color: #fff;
+  padding: 20px;
+  display: none;
+  z-index: 1000;
+}
+
+/* Seta */
+.arrow {
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 30px solid #00ffd5;
 }
 </style>
 </head>
@@ -72,58 +73,79 @@ html, body {
 <body>
 
 <div id="map"></div>
-<div id="arrow"></div>
+
 <div id="speedBox">0 km/h</div>
 <div id="configBtn">⚙️</div>
 
+<div id="configPanel">
+  <h3>Configurações</h3>
+  <p>(em desenvolvimento)</p>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
-/* MAPA */
-var map = L.map('map', {
-  zoomControl: false,
-  attributionControl: false
-}).setView([0, 0], 17);
+const map = L.map('map', {
+  zoomControl: false
+}).setView([-23.5505, -46.6333], 17);
 
-L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  { maxZoom: 19 }
-).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
 
-/* GPS */
-var firstFix = true;
+// Ícone da seta
+const arrowIcon = L.divIcon({
+  className: '',
+  html: '<div class="arrow"></div>',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15]
+});
 
-navigator.geolocation.watchPosition(
-  function (pos) {
-    var lat = pos.coords.latitude;
-    var lon = pos.coords.longitude;
-    var speed = pos.coords.speed;
-    var heading = pos.coords.heading;
+let marker = L.marker([-23.5505, -46.6333], {
+  icon: arrowIcon
+}).addTo(map);
 
-    if (firstFix) {
-      map.setView([lat, lon], 17);
-      firstFix = false;
-    } else {
-      map.panTo([lat, lon], { animate: false });
+let lastSpeed = 0;
+
+if ("geolocation" in navigator) {
+  navigator.geolocation.watchPosition(
+    pos => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const heading = pos.coords.heading || 0;
+      const speed = pos.coords.speed ? pos.coords.speed * 3.6 : lastSpeed;
+
+      lastSpeed = speed;
+
+      marker.setLatLng([lat, lon]);
+      map.setView([lat, lon]);
+
+      const el = marker.getElement();
+      if (el) {
+        el.style.transform = `rotate(${heading}deg)`;
+      }
+
+      document.getElementById("speedBox").innerText =
+        Math.round(speed) + " km/h";
+    },
+    err => {
+      alert("Ative a localização (GPS)");
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 500,
+      timeout: 10000
     }
+  );
+}
 
-    if (speed !== null) {
-      var kmh = Math.max(0, speed * 3.6).toFixed(0);
-      document.getElementById("speedBox").innerText = kmh + " km/h";
-    }
+// Config botão
+const btn = document.getElementById("configBtn");
+const panel = document.getElementById("configPanel");
 
-    if (heading !== null) {
-      document.getElementById("arrow").style.transform =
-        "translate(-50%, -50%) rotate(" + heading + "deg)";
-    }
-  },
-  function (err) {
-    alert("Erro GPS: " + err.message);
-  },
-  {
-    enableHighAccuracy: true,
-    maximumAge: 0,
-    timeout: 10000
-  }
-);
+btn.onclick = () => {
+  panel.style.display = panel.style.display === "block" ? "none" : "block";
+};
 </script>
 
 </body>
