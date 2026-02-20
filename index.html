@@ -1,135 +1,178 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Radar Teste Estável</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mapa Beta 1</title>
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
 
 <style>
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: #eef1f4;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
+  background: #000;
 }
 
-/* Container */
-#app {
-  position: relative;
+#map {
   width: 100%;
   height: 100%;
 }
 
-/* Veículo */
-#veiculo {
+/* Placa de velocidade */
+#speed-limit {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 80px;
-  height: 80px;
-  transform: translate(-50%, -50%) rotate(0deg);
-  transition: transform 0.15s linear;
-}
-
-/* Placa */
-#placa {
-  position: absolute;
-  top: 16px;
-  left: 16px;
+  top: 20px;
+  left: 15px;
   width: 90px;
   height: 90px;
   border-radius: 50%;
-  background: #fff;
   border: 8px solid red;
+  background: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: bold;
+  z-index: 1000;
 }
 
-/* Velocidade */
-#velocidade {
+/* Velocidade atual */
+#speed {
   position: absolute;
   top: 120px;
-  left: 16px;
-  background: #222;
+  left: 15px;
+  padding: 8px 14px;
+  background: rgba(0,0,0,0.7);
   color: #fff;
-  padding: 6px 14px;
   border-radius: 10px;
-  font-size: 16px;
+  font-size: 18px;
+  z-index: 1000;
+}
+
+/* Config */
+#config {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  font-size: 28px;
+  color: #fff;
+  z-index: 1000;
 }
 </style>
 </head>
 
 <body>
 
-<div id="app">
+<div id="map"></div>
+<div id="speed-limit">50</div>
+<div id="speed">0 km/h</div>
+<div id="config">⚙️</div>
 
-<!-- Jeep + seta (frente sempre para cima) -->
-<svg id="veiculo" viewBox="0 0 100 100">
-  <!-- Seta -->
-  <polygon points="50,5 65,35 55,35 55,85 45,85 45,35 35,35"
-           fill="#1ea7ff"/>
-  <!-- Jeep -->
-  <rect x="28" y="55" width="44" height="22" rx="5" fill="#111"/>
-  <circle cx="35" cy="82" r="5" fill="#000"/>
-  <circle cx="65" cy="82" r="5" fill="#000"/>
-</svg>
-
-<div id="placa">80</div>
-<div id="velocidade">0 km/h</div>
-
-</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// ===== ESTADO =====
-let heading = 0;          // direção (graus)
-let velocidade = 0;       // km/h
-let alvoVel = 60;         // velocidade alvo
-let limiteVia = 80;
+/* =========================
+   MAPA
+========================= */
+const map = L.map('map', {
+  zoomControl: false
+}).setView([-23.55052, -46.633308], 17);
 
-// ===== ELEMENTOS =====
-const veiculo = document.getElementById("veiculo");
-const velocidadeEl = document.getElementById("velocidade");
-const placaEl = document.getElementById("placa");
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
 
-// ===== SIMULA DIREÇÃO SUAVE =====
-setInterval(() => {
-  heading += 5;
-  if (heading > 360) heading = 0;
+/* =========================
+   ÍCONE JEEP (PNG EMBUTIDO)
+========================= */
+const jeepIcon = L.divIcon({
+  html: `
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAB..." 
+    style="width:60px;transform-origin:center center;" id="jeep">
+  `,
+  className: '',
+  iconSize: [60, 60],
+  iconAnchor: [30, 30]
+});
 
-  veiculo.style.transform =
-    `translate(-50%, -50%) rotate(${heading}deg)`;
-}, 300);
+let marker = L.marker(map.getCenter(), {
+  icon: jeepIcon
+}).addTo(map);
 
-// ===== SIMULA VELOCIDADE REALISTA =====
-setInterval(() => {
-  if (velocidade < alvoVel) {
-    velocidade += 2;
-  } else if (velocidade > alvoVel) {
-    velocidade -= 1;
+/* =========================
+   VELOCIDADE
+========================= */
+let lastSpeed = 0;
+let speedLimit = 50;
+
+/* Simulação simples de tipo de via */
+function getSpeedLimit(speed) {
+  if (speed < 60) return 50;      // urbana
+  if (speed < 90) return 80;      // via rápida
+  if (speed < 110) return 100;    // estrada
+  return 110;                     // rodovia
+}
+
+/* =========================
+   GPS REAL
+========================= */
+navigator.geolocation.watchPosition(
+  (pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    const heading = pos.coords.heading || 0;
+
+    let speed = pos.coords.speed
+      ? pos.coords.speed * 3.6
+      : lastSpeed;
+
+    // Suavização
+    speed = lastSpeed + (speed - lastSpeed) * 0.2;
+    lastSpeed = speed;
+
+    // Atualiza limite
+    speedLimit = getSpeedLimit(speed);
+
+    // Atualiza UI
+    document.getElementById('speed').innerText =
+      Math.round(speed) + ' km/h';
+
+    document.getElementById('speed-limit').innerText =
+      speedLimit;
+
+    // Alerta excesso
+    if (speed > speedLimit) {
+      document.getElementById('speed-limit').style.background = 'red';
+      document.getElementById('speed-limit').style.color = '#fff';
+    } else {
+      document.getElementById('speed-limit').style.background = 'white';
+      document.getElementById('speed-limit').style.color = '#000';
+    }
+
+    // Atualiza posição
+    marker.setLatLng([lat, lon]);
+    map.setView([lat, lon], map.getZoom(), { animate: false });
+
+    // Rotação do Jeep
+    const jeep = document.getElementById('jeep');
+    if (jeep) {
+      jeep.style.transform = `rotate(${heading}deg)`;
+    }
+  },
+  (err) => {
+    console.error(err);
+  },
+  {
+    enableHighAccuracy: true,
+    maximumAge: 500,
+    timeout: 10000
   }
-
-  velocidadeEl.innerText = velocidade + " km/h";
-
-  // alerta visual
-  placaEl.style.background =
-    velocidade > limiteVia ? "#ffe1e1" : "#fff";
-}, 500);
-
-// ===== MUDA VIA / RADAR =====
-const vias = [50, 60, 80, 100, 110];
-let idx = 2;
-
-setInterval(() => {
-  idx = (idx + 1) % vias.length;
-  limiteVia = vias[idx];
-  alvoVel = limiteVia - 10;
-  placaEl.innerText = limiteVia;
-}, 5000);
+);
 </script>
 
 </body>
