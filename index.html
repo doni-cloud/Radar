@@ -2,178 +2,159 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Mapa Beta 1</title>
+<title>Radar GPS – Beta 3</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-html, body {
+html, body, #map {
+  height: 100%;
   margin: 0;
-  padding: 0;
-  height: 100%;
-  background: #000;
 }
 
-#map {
-  width: 100%;
-  height: 100%;
-}
-
-/* Placa de velocidade */
-#speed-limit {
+#speedBox {
   position: absolute;
-  top: 20px;
-  left: 15px;
-  width: 90px;
-  height: 90px;
+  top: 10px;
+  left: 10px;
+  background: #222;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  z-index: 1000;
+}
+
+#limitBox {
+  position: absolute;
+  top: 70px;
+  left: 10px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  border: 8px solid red;
+  border: 6px solid red;
   background: white;
+  font-size: 26px;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
-  font-weight: bold;
   z-index: 1000;
 }
-
-/* Velocidade atual */
-#speed {
-  position: absolute;
-  top: 120px;
-  left: 15px;
-  padding: 8px 14px;
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  border-radius: 10px;
-  font-size: 18px;
-  z-index: 1000;
-}
-
-/* Config */
-#config {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  font-size: 28px;
-  color: #fff;
-  z-index: 1000;
+.over {
+  background: red !important;
+  color: white;
 }
 </style>
 </head>
 
 <body>
-
 <div id="map"></div>
-<div id="speed-limit">50</div>
-<div id="speed">0 km/h</div>
-<div id="config">⚙️</div>
+<div id="speedBox">0 km/h</div>
+<div id="limitBox">50</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-/* =========================
-   MAPA
-========================= */
-const map = L.map('map', {
-  zoomControl: false
-}).setView([-23.55052, -46.633308], 17);
+// ================== MAPA ==================
+const map = L.map('map').setView([-23.55, -46.63], 16);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom: 19
 }).addTo(map);
 
-/* =========================
-   ÍCONE JEEP (PNG EMBUTIDO)
-========================= */
-const jeepIcon = L.divIcon({
-  html: `
-    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAB..." 
-    style="width:60px;transform-origin:center center;" id="jeep">
-  `,
-  className: '',
-  iconSize: [60, 60],
-  iconAnchor: [30, 30]
+// ================== ICONES BASE64 ==================
+
+// Jeep (exemplo simplificado – pode trocar pela sua base64 real)
+const jeepIcon = L.icon({
+  iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAZlBMVEUAAAD///////////////////////////////////////////////////////////////////////////////////////////////////////////////8a3n+BAAAAJXRSTlMAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA8Ck8AAABASURBVBgZBcEJDoAgDATQnX//Zy1pAkEoPoeAQMZp2s5S6sBQLi3GSh7MG4wFZ8c5CMBx5xW9AAAAAElFTkSuQmCC',
+  iconSize: [48,48],
+  iconAnchor: [24,24]
 });
 
-let marker = L.marker(map.getCenter(), {
-  icon: jeepIcon
-}).addTo(map);
+// Radar
+const radarIcon = L.icon({
+  iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAY1BMVEUAAAD///////////////////////////////////////////////////////////////////////////////////////////////////////////////9p4ZHrAAAAI3RSTlMAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA5ZZrGAAAAQklEQVQYV2NgQAX/GEMGJhYmBgYGJgYGBgYGJiZmBgYGFgYGRkZGRgYGJiZmBgYGJgYGBgYGJgYGBgYGBgAAAMF8R1J3uTtAAAAAElFTkSuQmCC',
+  iconSize: [32,32],
+  iconAnchor: [16,16]
+});
 
-/* =========================
-   VELOCIDADE
-========================= */
-let lastSpeed = 0;
-let speedLimit = 50;
+// Semáforo
+const signalIcon = L.icon({
+  iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAZlBMVEUAAAD///////////////////////////////////////////////////////////////////////////////////////////////////////////////8a3n+BAAAAJXRSTlMAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA8Ck8AAABASURBVBgZBcEJDoAgDATQnX//Zy1pAkEoPoeAQMZp2s5S6sBQLi3GSh7MG4wFZ8c5CMBx5xW9AAAAAElFTkSuQmCC',
+  iconSize: [32,32],
+  iconAnchor: [16,16]
+});
 
-/* Simulação simples de tipo de via */
-function getSpeedLimit(speed) {
-  if (speed < 60) return 50;      // urbana
-  if (speed < 90) return 80;      // via rápida
-  if (speed < 110) return 100;    // estrada
-  return 110;                     // rodovia
-}
+// ================== MARKER ==================
+const userMarker = L.marker([-23.55, -46.63], {icon: jeepIcon}).addTo(map);
 
-/* =========================
-   GPS REAL
-========================= */
-navigator.geolocation.watchPosition(
-  (pos) => {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-    const heading = pos.coords.heading || 0;
+// ================== AUDIO ==================
+const beepRadar = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=');
+const beepSignal = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=');
 
-    let speed = pos.coords.speed
-      ? pos.coords.speed * 3.6
-      : lastSpeed;
+let lastAlert = 0;
 
-    // Suavização
-    speed = lastSpeed + (speed - lastSpeed) * 0.2;
-    lastSpeed = speed;
+// ================== GPS ==================
+navigator.geolocation.watchPosition(pos => {
+  const lat = pos.coords.latitude;
+  const lon = pos.coords.longitude;
+  const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
 
-    // Atualiza limite
-    speedLimit = getSpeedLimit(speed);
+  userMarker.setLatLng([lat, lon]);
+  map.setView([lat, lon], map.getZoom());
 
-    // Atualiza UI
-    document.getElementById('speed').innerText =
-      Math.round(speed) + ' km/h';
+  document.getElementById('speedBox').innerText = Math.round(speed) + ' km/h';
 
-    document.getElementById('speed-limit').innerText =
-      speedLimit;
+  const limit = 50;
+  document.getElementById('limitBox').innerText = limit;
 
-    // Alerta excesso
-    if (speed > speedLimit) {
-      document.getElementById('speed-limit').style.background = 'red';
-      document.getElementById('speed-limit').style.color = '#fff';
-    } else {
-      document.getElementById('speed-limit').style.background = 'white';
-      document.getElementById('speed-limit').style.color = '#000';
-    }
-
-    // Atualiza posição
-    marker.setLatLng([lat, lon]);
-    map.setView([lat, lon], map.getZoom(), { animate: false });
-
-    // Rotação do Jeep
-    const jeep = document.getElementById('jeep');
-    if (jeep) {
-      jeep.style.transform = `rotate(${heading}deg)`;
-    }
-  },
-  (err) => {
-    console.error(err);
-  },
-  {
-    enableHighAccuracy: true,
-    maximumAge: 500,
-    timeout: 10000
+  if (speed > limit) {
+    document.getElementById('limitBox').classList.add('over');
+  } else {
+    document.getElementById('limitBox').classList.remove('over');
   }
-);
-</script>
 
+  fetchRadars(lat, lon);
+
+}, err => {
+  alert("Ative o GPS");
+}, { enableHighAccuracy: true });
+
+// ================== RADAR / SEMAFORO ==================
+let loaded = false;
+
+function fetchRadars(lat, lon){
+  if (loaded) return;
+  loaded = true;
+
+  const query = `
+  [out:json];
+  (
+    node(around:800,${lat},${lon})["highway"="speed_camera"];
+    node(around:800,${lat},${lon})["highway"="traffic_signals"];
+  );
+  out;
+  `;
+
+  fetch("https://overpass-api.de/api/interpreter",{
+    method:"POST",
+    body:query
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    data.elements.forEach(el=>{
+      const icon = el.tags.highway === "speed_camera" ? radarIcon : signalIcon;
+      const marker = L.marker([el.lat, el.lon], {icon}).addTo(map);
+
+      const dist = map.distance([el.lat, el.lon], userMarker.getLatLng());
+      if (dist < 300 && Date.now() - lastAlert > 8000) {
+        lastAlert = Date.now();
+        el.tags.highway === "speed_camera" ? beepRadar.play() : beepSignal.play();
+      }
+    });
+  });
+}
+</script>
 </body>
 </html>
