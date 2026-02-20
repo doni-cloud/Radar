@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Radar SP – Beta 2</title>
+<title>Radar SP – Beta 2.1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -21,21 +20,33 @@ html, body {
   width: 100%;
 }
 
-/* Velocidade */
-#speedBox {
+/* PLACA DE VELOCIDADE */
+#speedSign {
   position: absolute;
   left: 15px;
-  top: 60px;
-  background: rgba(0,0,0,0.75);
-  color: #fff;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 20px;
-  font-weight: bold;
+  top: 80px;
+  width: 110px;
+  height: 110px;
+  background: white;
+  border: 10px solid red;
+  border-radius: 50%;
+  text-align: center;
   z-index: 999;
+  box-sizing: border-box;
 }
 
-/* Config */
+#speedNumber {
+  font-size: 36px;
+  font-weight: bold;
+  margin-top: 18px;
+}
+
+#speedUnit {
+  font-size: 14px;
+  margin-top: -4px;
+}
+
+/* CONFIG */
 #configBtn {
   position: absolute;
   top: 15px;
@@ -59,13 +70,13 @@ html, body {
   z-index: 1000;
 }
 
-/* Seta */
+/* SETA */
 .arrow {
   width: 0;
   height: 0;
-  border-left: 15px solid transparent;
-  border-right: 15px solid transparent;
-  border-bottom: 30px solid #00ffd5;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-bottom: 32px solid #00ffd5;
 }
 </style>
 </head>
@@ -74,9 +85,14 @@ html, body {
 
 <div id="map"></div>
 
-<div id="speedBox">0 km/h</div>
-<div id="configBtn">⚙️</div>
+<!-- PLACA -->
+<div id="speedSign">
+  <div id="speedNumber">0</div>
+  <div id="speedUnit">km/h</div>
+</div>
 
+<!-- CONFIG -->
+<div id="configBtn">⚙️</div>
 <div id="configPanel">
   <h3>Configurações</h3>
   <p>(em desenvolvimento)</p>
@@ -93,18 +109,19 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// Ícone da seta
+// ÍCONE DA SETA (CENTRALIZADO)
 const arrowIcon = L.divIcon({
   className: '',
-  html: '<div class="arrow"></div>',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15]
+  html: '<div class="arrow" id="arrow"></div>',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16]
 });
 
 let marker = L.marker([-23.5505, -46.6333], {
   icon: arrowIcon
 }).addTo(map);
 
+let isCentered = false;
 let lastSpeed = 0;
 
 if ("geolocation" in navigator) {
@@ -118,15 +135,21 @@ if ("geolocation" in navigator) {
       lastSpeed = speed;
 
       marker.setLatLng([lat, lon]);
-      map.setView([lat, lon]);
 
-      const el = marker.getElement();
-      if (el) {
-        el.style.transform = `rotate(${heading}deg)`;
+      // Centraliza só uma vez (BUG RESOLVIDO)
+      if (!isCentered) {
+        map.setView([lat, lon], 17);
+        isCentered = true;
       }
 
-      document.getElementById("speedBox").innerText =
-        Math.round(speed) + " km/h";
+      // Rotação correta da seta
+      const arrowEl = document.getElementById("arrow");
+      if (arrowEl) {
+        arrowEl.style.transform = `rotate(${heading}deg)`;
+      }
+
+      document.getElementById("speedNumber").innerText =
+        Math.round(speed);
     },
     err => {
       alert("Ative a localização (GPS)");
@@ -139,7 +162,7 @@ if ("geolocation" in navigator) {
   );
 }
 
-// Config botão
+// CONFIG
 const btn = document.getElementById("configBtn");
 const panel = document.getElementById("configPanel");
 
