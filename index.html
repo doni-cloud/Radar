@@ -1,160 +1,145 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<title>Radar GPS – Beta 3</title>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa GPS Beta 2</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body, #map {
-  height: 100%;
+html, body {
   margin: 0;
+  padding: 0;
+  height: 100%;
+  background: black;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
 }
 
 #speedBox {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  background: #222;
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 16px;
-  z-index: 1000;
-}
-
-#limitBox {
-  position: absolute;
-  top: 70px;
-  left: 10px;
+  left: 12px;
+  top: 12px;
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  border: 6px solid red;
   background: white;
-  font-size: 26px;
-  font-weight: bold;
+  border: 6px solid red;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  font-size: 26px;
+  font-weight: bold;
+  z-index: 999;
 }
-.over {
-  background: red !important;
+
+#settings {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  font-size: 26px;
+  background: rgba(0,0,0,0.6);
   color: white;
+  padding: 10px;
+  border-radius: 50%;
+  z-index: 999;
 }
 </style>
 </head>
 
 <body>
-<div id="map"></div>
-<div id="speedBox">0 km/h</div>
-<div id="limitBox">50</div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<div id="map"></div>
+<div id="speedBox">0</div>
+<div id="settings">⚙️</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// ================== MAPA ==================
-const map = L.map('map').setView([-23.55, -46.63], 16);
+// =================== MAPA ===================
+const map = L.map('map').setView([0, 0], 18);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// ================== ICONES BASE64 ==================
+// =================== LIMITES ===================
+let speedLimit = 50; // urbano
+const speedBox = document.getElementById("speedBox");
 
-// Jeep (exemplo simplificado – pode trocar pela sua base64 real)
-const jeepIcon = L.icon({
-  iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAZlBMVEUAAAD///////////////////////////////////////////////////////////////////////////////////////////////////////////////8a3n+BAAAAJXRSTlMAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA8Ck8AAABASURBVBgZBcEJDoAgDATQnX//Zy1pAkEoPoeAQMZp2s5S6sBQLi3GSh7MG4wFZ8c5CMBx5xW9AAAAAElFTkSuQmCC',
-  iconSize: [48,48],
-  iconAnchor: [24,24]
-});
+// =================== ICONES BASE64 ===================
 
 // Radar
 const radarIcon = L.icon({
-  iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAY1BMVEUAAAD///////////////////////////////////////////////////////////////////////////////////////////////////////////////9p4ZHrAAAAI3RSTlMAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA5ZZrGAAAAQklEQVQYV2NgQAX/GEMGJhYmBgYGJgYGBgYGJiZmBgYGFgYGRkZGRgYGJiZmBgYGJgYGBgYGJgYGBgYGBgAAAMF8R1J3uTtAAAAAElFTkSuQmCC',
-  iconSize: [32,32],
-  iconAnchor: [16,16]
+  iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAA...",
+  iconSize: [36,36],
+  iconAnchor: [18,18]
 });
 
 // Semáforo
-const signalIcon = L.icon({
-  iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAZlBMVEUAAAD///////////////////////////////////////////////////////////////////////////////////////////////////////////////8a3n+BAAAAJXRSTlMAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA8Ck8AAABASURBVBgZBcEJDoAgDATQnX//Zy1pAkEoPoeAQMZp2s5S6sBQLi3GSh7MG4wFZ8c5CMBx5xW9AAAAAElFTkSuQmCC',
-  iconSize: [32,32],
-  iconAnchor: [16,16]
+const semaforoIcon = L.icon({
+  iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAA...",
+  iconSize: [36,36],
+  iconAnchor: [18,18]
 });
 
-// ================== MARKER ==================
-const userMarker = L.marker([-23.55, -46.63], {icon: jeepIcon}).addTo(map);
+// Jeep (seta carro)
+const jeepIcon = L.divIcon({
+  className: '',
+  html: '<div id="jeep" style="width:30px;height:30px;background:black;border-radius:6px;transform:rotate(0deg)"></div>',
+  iconSize: [30,30],
+  iconAnchor: [15,15]
+});
 
-// ================== AUDIO ==================
-const beepRadar = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=');
-const beepSignal = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=');
+// =================== MARKERS FIXOS ===================
+L.marker([-23.5505, -46.6333], {icon: radarIcon}).addTo(map);
+L.marker([-23.5512, -46.6325], {icon: semaforoIcon}).addTo(map);
 
-let lastAlert = 0;
+// =================== AUDIO ===================
+const beepRadar = new Audio("data:audio/mp3;base64,//uQxAA...");
+const beepSemaforo = new Audio("data:audio/mp3;base64,//uQxAA...");
 
-// ================== GPS ==================
+// =================== GPS ===================
+let jeepMarker = null;
+let lastPosition = null;
+
 navigator.geolocation.watchPosition(pos => {
   const lat = pos.coords.latitude;
-  const lon = pos.coords.longitude;
-  const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
+  const lng = pos.coords.longitude;
+  const speed = pos.coords.speed ? (pos.coords.speed * 3.6) : 0;
 
-  userMarker.setLatLng([lat, lon]);
-  map.setView([lat, lon], map.getZoom());
+  speedBox.innerText = Math.round(speed);
 
-  document.getElementById('speedBox').innerText = Math.round(speed) + ' km/h';
-
-  const limit = 50;
-  document.getElementById('limitBox').innerText = limit;
-
-  if (speed > limit) {
-    document.getElementById('limitBox').classList.add('over');
+  if (speed > speedLimit) {
+    speedBox.style.background = "red";
+    speedBox.style.color = "white";
   } else {
-    document.getElementById('limitBox').classList.remove('over');
+    speedBox.style.background = "white";
+    speedBox.style.color = "black";
   }
 
-  fetchRadars(lat, lon);
+  if (!jeepMarker) {
+    jeepMarker = L.marker([lat, lng], {icon: jeepIcon}).addTo(map);
+    map.setView([lat, lng], 18);
+  } else {
+    jeepMarker.setLatLng([lat, lng]);
+    map.panTo([lat, lng]);
+  }
+
+  lastPosition = {lat, lng};
 
 }, err => {
-  alert("Ative o GPS");
-}, { enableHighAccuracy: true });
-
-// ================== RADAR / SEMAFORO ==================
-let loaded = false;
-
-function fetchRadars(lat, lon){
-  if (loaded) return;
-  loaded = true;
-
-  const query = `
-  [out:json];
-  (
-    node(around:800,${lat},${lon})["highway"="speed_camera"];
-    node(around:800,${lat},${lon})["highway"="traffic_signals"];
-  );
-  out;
-  `;
-
-  fetch("https://overpass-api.de/api/interpreter",{
-    method:"POST",
-    body:query
-  })
-  .then(r=>r.json())
-  .then(data=>{
-    data.elements.forEach(el=>{
-      const icon = el.tags.highway === "speed_camera" ? radarIcon : signalIcon;
-      const marker = L.marker([el.lat, el.lon], {icon}).addTo(map);
-
-      const dist = map.distance([el.lat, el.lon], userMarker.getLatLng());
-      if (dist < 300 && Date.now() - lastAlert > 8000) {
-        lastAlert = Date.now();
-        el.tags.highway === "speed_camera" ? beepRadar.play() : beepSignal.play();
-      }
-    });
-  });
-}
+  alert("Erro GPS: " + err.message);
+}, {
+  enableHighAccuracy: true,
+  maximumAge: 1000,
+  timeout: 10000
+});
 </script>
+
 </body>
 </html>
