@@ -2,166 +2,178 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>GPS Radar – BETA 02 (Estável)</title>
-
+<title>GPS Radar Beta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
 html, body {
   margin: 0;
   padding: 0;
-  height: 100%;
+  background: #000;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
 }
 
+/* MAPA */
 #map {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  background: #111;
 }
 
 /* SETA */
-.seta-container svg {
-  width: 50px;
-  height: 50px;
-  transform-origin: 50% 50%;
+#arrow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 18px solid transparent;
+  border-right: 18px solid transparent;
+  border-bottom: 40px solid #00ffcc;
+  transform: translate(-50%, -50%) rotate(0deg);
   transition: transform 0.2s linear;
 }
 
-/* PLACA VELOCIDADE */
+/* VELOCIDADE */
 #speedBox {
   position: fixed;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 90px;
-  height: 90px;
-  background: white;
-  border: 5px solid red;
-  border-radius: 50%;
-  text-align: center;
-  font-family: Arial, sans-serif;
-  z-index: 9999;
-}
-
-#speedValue {
-  font-size: 32px;
+  left: 10px;
+  top: 40%;
+  background: rgba(0,0,0,0.7);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 22px;
   font-weight: bold;
-  margin-top: 18px;
 }
 
 /* CONFIG */
 #configBtn {
   position: fixed;
-  top: 12px;
-  right: 12px;
-  width: 44px;
-  height: 44px;
-  background: rgba(0,0,0,0.7);
-  color: white;
-  border-radius: 50%;
-  font-size: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  cursor: pointer;
-}
-
-#configMenu {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.85);
-  color: white;
-  display: none;
-  z-index: 10000;
-}
-
-#closeConfig {
-  position: absolute;
-  top: 15px;
-  right: 15px;
+  top: 10px;
+  right: 10px;
   font-size: 26px;
   cursor: pointer;
+}
+
+/* MENU */
+#menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.95);
+  display: none;
+  padding: 20px;
+}
+
+select {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="map"></div>
-
-<div id="speedBox">
-  <div id="speedValue">0</div>
-  <div style="font-size:14px;">km/h</div>
+<div id="map">
+  <div id="arrow"></div>
 </div>
 
+<div id="speedBox">0 km/h</div>
 <div id="configBtn">⚙️</div>
 
-<div id="configMenu">
-  <div id="closeConfig">✖</div>
-  <h2 style="margin:20px;">Configurações</h2>
-  <p style="margin:20px;">(Menu funcional – opções entram no BETA 03)</p>
+<div id="menu">
+  <h2>Configurações</h2>
+  <label>Voz do alerta:</label><br><br>
+  <select id="voiceSelect"></select><br><br>
+  <button onclick="closeMenu()">Fechar</button>
 </div>
 
 <script>
-/* ================= MAPA ================= */
-const map = L.map('map', {
-  attributionControl: false
-}).setView([0, 0], 18);
+let arrow = document.getElementById("arrow");
+let speedBox = document.getElementById("speedBox");
+let voices = [];
+let selectedVoice = null;
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
+/* VOZ */
+function loadVoices() {
+  voices = speechSynthesis.getVoices();
+  let select = document.getElementById("voiceSelect");
+  select.innerHTML = "";
 
-/* ================= SETA ================= */
-const setaIcon = L.divIcon({
-  className: 'seta-container',
-  html: `
-    <svg id="setaSvg" viewBox="0 0 100 100">
-      <polygon points="50,5 95,95 50,75 5,95" fill="#FFD400"/>
-    </svg>
-  `,
-  iconSize: [50,50],
-  iconAnchor: [25,25]
-});
+  voices.forEach((v, i) => {
+    if (v.lang.includes("pt")) {
+      let opt = document.createElement("option");
+      opt.value = i;
+      opt.text = v.name + " (" + v.lang + ")";
+      select.appendChild(opt);
+    }
+  });
 
-const marcador = L.marker([0,0], { icon: setaIcon }).addTo(map);
+  select.onchange = () => {
+    selectedVoice = voices[select.value];
+  };
 
-/* ================= VELOCIDADE MANUAL ================= */
-let lastPos = null;
-let lastTime = null;
-
-function calcularVelocidade(lat, lon) {
-  if (!lastPos) {
-    lastPos = { lat, lon };
-    lastTime = Date.now();
-    return 0;
+  if (voices.length > 0) {
+    selectedVoice = voices[0];
   }
+}
 
-  const R = 6371000;
-  const toRad = x => x * Math.PI / 180;
+speechSynthesis.onvoiceschanged = loadVoices;
 
-  const dLat = toRad(lat - lastPos.lat);
-  const dLon = toRad(lon - lastPos.lon);
+/* ALERTA TESTE */
+function speak(text) {
+  let u = new SpeechSynthesisUtterance(text);
+  if (selectedVoice) u.voice = selectedVoice;
+  u.lang = "pt-BR";
+  speechSynthesis.speak(u);
+}
 
-  const a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(toRad(lastPos.lat)) *
-    Math.cos(toRad(lat)) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
+/* MENU */
+document.getElementById("configBtn").onclick = () => {
+  document.getElementById("menu").style.display = "block";
+};
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  const distance = R * c;
+function closeMenu() {
+  document.getElementById("menu").style.display = "none";
+}
 
-  const now = Date.now();
-  const deltaTime = (now - lastTime) / 1000;
+/* GPS */
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(pos => {
+    let speed = pos.coords.speed;
+    let heading = pos.coords.heading;
 
-  lastPos = { lat, lon };
-  lastTime = now;
+    if (speed !== null) {
+      let kmh = Math.max(0, speed * 3.6).toFixed(0);
+      speedBox.innerText = kmh + " km/h";
+    }
 
-  if (deltaTime === 0) return 0;
+    if (heading !== null) {
+      arrow.style.transform =
+        "translate(-50%, -50%) rotate(" + heading + "deg)";
+    }
+  }, err => {
+    alert("Erro GPS: " + err.message);
+  }, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 5000
+  });
+}
 
-  return Math.round((distance / deltaTime) * 3.6);*
+/* TESTE DE VOZ AUTOMÁTICO */
+setTimeout(() => {
+  speak("Sistema de alerta ativo");
+}, 2000);
+</script>
 
+</body>
+</html>
