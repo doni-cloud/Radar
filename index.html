@@ -1,85 +1,69 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>GPS Jeep Renegade – Beta Estável</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Jeep Navigation Beta 3</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
 html, body {
   margin: 0;
+  padding: 0;
   height: 100%;
   background: #111;
+  font-family: Arial, sans-serif;
 }
 
 #map {
-  width: 100%;
   height: 100%;
+  width: 100%;
 }
 
-/* LIMITE DA VIA */
-#limitBox {
+/* HUD */
+#hud {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 78px;
-  height: 78px;
-  border-radius: 50%;
-  border: 6px solid red;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
-  font-weight: bold;
-  z-index: 1000;
+  top: 10px;
+  left: 10px;
+  z-index: 999;
+  color: #fff;
 }
 
-/* VELOCIDADE ATUAL */
-#speedBox {
-  position: absolute;
-  top: 100px;
-  left: 22px;
-  background: #111;
-  color: white;
-  padding: 8px 14px;
+.box {
+  background: rgba(0,0,0,0.7);
+  padding: 8px 12px;
   border-radius: 10px;
-  font-size: 18px;
-  z-index: 1000;
+  margin-bottom: 6px;
+  font-size: 16px;
 }
 
-/* BOTÃO CÂMERA */
-#freeCam {
-  position: absolute;
-  right: 16px;
-  bottom: 20px;
-  width: 56px;
-  height: 56px;
-  background: red; /* começa centralizado */
-  color: white;
+#limit {
+  font-size: 28px;
+  font-weight: bold;
+  border: 6px solid red;
   border-radius: 50%;
-  font-size: 26px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  cursor: pointer;
+  background: #fff;
+  color: #000;
 }
 
-/* FUMAÇA */
-@keyframes smoke {
-  from { opacity: 0.6; transform: translate(0,0) scale(1); }
-  to   { opacity: 0; transform: translate(-12px,12px) scale(1.7); }
-}
-.smoke {
+/* Camera button */
+#cameraBtn {
   position: absolute;
-  width: 10px;
-  height: 10px;
-  background: rgba(200,200,200,0.6);
+  bottom: 20px;
+  right: 20px;
+  z-index: 999;
+  background: red;
+  color: white;
+  padding: 14px;
   border-radius: 50%;
-  animation: smoke 1s linear infinite;
+  font-size: 20px;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -87,82 +71,94 @@ html, body {
 <body>
 
 <div id="map"></div>
-<div id="limitBox">50</div>
-<div id="speedBox">0 km/h</div>
-<div id="freeCam">📷</div>
+
+<div id="hud">
+  <div id="limit">50</div>
+  <div class="box" id="speed">0 km/h</div>
+</div>
+
+<div id="cameraBtn">📷</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-/* MAPA */
-const map = L.map('map', { zoomControl: false }).setView([0,0], 18);
+// ===== MAPA =====
+const map = L.map('map', { zoomControl: false }).setView([-23.55, -46.63], 17);
+
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
+  attribution: '© OpenStreetMap'
 }).addTo(map);
 
-/* CONFIG */
-let followGPS = true;
-let speedLimit = 50;
-let speedBuffer = [];
-let jeepMarker = null;
-
-/* JEEP RENEGADE – ESTILO UBER */
-const jeepIcon = L.divIcon({
-  className: '',
-  html: `
-  <div style="position:relative;width:48px;height:70px;">
-    <svg width="48" height="70" viewBox="0 0 48 70">
-      <ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
-      <rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
-      <rect x="12" y="4" width="24" height="12" rx="6" fill="#111"/>
-      <rect x="15" y="8" width="18" height="8" rx="3" fill="#1c1c1c"/>
-      <circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
-      <circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
-      <rect x="18" y="50" width="12" height="5" rx="1.5" fill="#ccc"/>
-      <rect x="10" y="18" width="2" height="26" fill="rgba(255,255,255,0.12)"/>
-      <rect x="36" y="18" width="2" height="26" fill="rgba(0,0,0,0.5)"/>
-    </svg>
-    <div class="smoke" style="left:10px;bottom:4px"></div>
-    <div class="smoke" style="right:10px;bottom:4px;animation-delay:.3s"></div>
-  </div>
-  `,
-  iconSize: [48,70],
-  iconAnchor: [24,35]
+// ===== ICONES =====
+const jeepIcon = L.icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/744/744465.png',
+  iconSize: [48,48],
+  iconAnchor: [24,24]
 });
 
-/* BOTÃO CÂMERA */
-document.getElementById("freeCam").onclick = () => {
-  followGPS = !followGPS;
-  freeCam.style.background = followGPS ? "red" : "green";
+const radarIcon = L.icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/484/484613.png',
+  iconSize: [36,36]
+});
+
+const semaforoIcon = L.icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/484/484167.png',
+  iconSize: [36,36]
+});
+
+// ===== MARCADORES =====
+const jeep = L.marker([-23.55, -46.63], {
+  icon: jeepIcon,
+  rotationAngle: 0
+}).addTo(map);
+
+L.marker([-23.551, -46.632], { icon: radarIcon }).addTo(map);
+L.marker([-23.549, -46.631], { icon: semaforoIcon }).addTo(map);
+
+// ===== VARIÁVEIS =====
+let lastPos = null;
+let cameraLock = true;
+let speedLimit = 50;
+
+// ===== CAMERA =====
+document.getElementById('cameraBtn').onclick = () => {
+  cameraLock = !cameraLock;
+  document.getElementById('cameraBtn').style.background =
+    cameraLock ? 'red' : 'green';
 };
 
-/* GPS */
+// ===== GPS REAL =====
 navigator.geolocation.watchPosition(pos => {
   const lat = pos.coords.latitude;
-  const lng = pos.coords.longitude;
-  const rawSpeed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
+  const lon = pos.coords.longitude;
+  const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
+  const heading = pos.coords.heading || 0;
 
-  speedBuffer.push(rawSpeed);
-  if (speedBuffer.length > 6) speedBuffer.shift();
-  const speed = speedBuffer.reduce((a,b)=>a+b,0) / speedBuffer.length;
+  jeep.setLatLng([lat, lon]);
+  jeep.setRotationAngle(heading);
 
-  speedBox.innerText = Math.round(speed) + " km/h";
-  limitBox.style.background = speed > speedLimit ? "red" : "white";
-  limitBox.style.color = speed > speedLimit ? "white" : "black";
-
-  if (jeepMarker) map.removeLayer(jeepMarker);
-  jeepMarker = L.marker([lat,lng], {
-    icon: jeepIcon,
-    interactive: false
-  }).addTo(map);
-
-  if (followGPS) {
-    map.setView([lat,lng], map.getZoom(), { animate: false });
+  if (cameraLock) {
+    map.setView([lat, lon], map.getZoom(), { animate: true });
   }
 
-}, err => alert("Erro GPS: " + err.message), {
+  document.getElementById('speed').innerText =
+    speed.toFixed(0) + ' km/h';
+
+  // ===== LIMITE SIMPLES =====
+  speedLimit = speed > 80 ? 110 : speed > 60 ? 80 : 50;
+  document.getElementById('limit').innerText = speedLimit;
+
+  if (speed > speedLimit) {
+    document.body.style.background = '#400';
+  } else {
+    document.body.style.background = '#111';
+  }
+
+}, err => {
+  alert('Ative o GPS');
+}, {
   enableHighAccuracy: true,
-  timeout: 10000
+  maximumAge: 0
 });
 </script>
 
