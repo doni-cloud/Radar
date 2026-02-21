@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>GPS Jeep Renegade – Beta Estável</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #111;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+/* LIMITE DA VIA */
+#limitBox {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 6px solid red;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: bold;
+  z-index: 1000;
+}
+
+/* VELOCIDADE ATUAL */
+#speedBox {
+  position: absolute;
+  top: 100px;
+  left: 22px;
+  background: #111;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 18px;
+  z-index: 1000;
+}
+
+/* BOTÃO CÂMERA */
+#freeCam {
+  position: absolute;
+  right: 16px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  background: red; /* começa centralizado */
+  color: white;
+  border-radius: 50%;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+/* FUMAÇA */
+@keyframes smoke {
+  from { opacity: 0.6; transform: translate(0,0) scale(1); }
+  to   { opacity: 0; transform: translate(-12px,12px) scale(1.7); }
+}
+.smoke {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgba(200,200,200,0.6);
+  border-radius: 50%;
+  animation: smoke 1s linear infinite;
+}
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+<div id="limitBox">50</div>
+<div id="speedBox">0 km/h</div>
+<div id="freeCam">📷</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+/* MAPA */
+const map = L.map('map', { zoomControl: false }).setView([0,0], 18);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
+
+/* CONFIG */
+let followGPS = true;
+let speedLimit = 50;
+let speedBuffer = [];
+let jeepMarker = null;
+
+/* JEEP RENEGADE – ESTILO UBER */
+const jeepIcon = L.divIcon({
+  className: '',
+  html: `
+  <div style="position:relative;width:48px;height:70px;">
+    <svg width="48" height="70" viewBox="0 0 48 70">
+      <ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
+      <rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
+      <rect x="12" y="4" width="24" height="12" rx="6" fill="#111"/>
+      <rect x="15" y="8" width="18" height="8" rx="3" fill="#1c1c1c"/>
+      <circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
+      <circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
+      <rect x="18" y="50" width="12" height="5" rx="1.5" fill="#ccc"/>
+      <rect x="10" y="18" width="2" height="26" fill="rgba(255,255,255,0.12)"/>
+      <rect x="36" y="18" width="2" height="26" fill="rgba(0,0,0,0.5)"/>
+    </svg>
+    <div class="smoke" style="left:10px;bottom:4px"></div>
+    <div class="smoke" style="right:10px;bottom:4px;animation-delay:.3s"></div>
+  </div>
+  `,
+  iconSize: [48,70],
+  iconAnchor: [24,35]
+});
+
+/* BOTÃO CÂMERA */
+document.getElementById("freeCam").onclick = () => {
+  followGPS = !followGPS;
+  freeCam.style.background = followGPS ? "red" : "green";
+};
+
+/* GPS */
+navigator.geolocation.watchPosition(pos => {
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  const rawSpeed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
+
+  speedBuffer.push(rawSpeed);
+  if (speedBuffer.length > 6) speedBuffer.shift();
+  const speed = speedBuffer.reduce((a,b)=>a+b,0) / speedBuffer.length;
+
+  speedBox.innerText = Math.round(speed) + " km/h";
+  limitBox.style.background = speed > speedLimit ? "red" : "white";
+  limitBox.style.color = speed > speedLimit ? "white" : "black";
+
+  if (jeepMarker) map.removeLayer(jeepMarker);
+  jeepMarker = L.marker([lat,lng], {
+    icon: jeepIcon,
+    interactive: false
+  }).addTo(map);
+
+  if (followGPS) {
+    map.setView([lat,lng], map.getZoom(), { animate: false });
+  }
+
+}, err => alert("Erro GPS: " + err.message), {
+  enableHighAccuracy: true,
+  timeout: 10000
+});
+</script>
+
+</body>
+</html>
+
