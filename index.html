@@ -1,20 +1,16 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Navegação Jeep Beta 3</title>
+<meta charset="UTF-8">
+<title>Beta 3 – Navegação</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
 html, body {
   margin: 0;
-  padding: 0;
   height: 100%;
-  background: #000;
-  font-family: Arial, sans-serif;
 }
 
 #map {
@@ -22,200 +18,142 @@ html, body {
   height: 100%;
 }
 
-/* HUD */
-#hud {
+/* Placa de velocidade */
+#speedBox {
   position: absolute;
   top: 10px;
   left: 10px;
-  z-index: 999;
-}
-
-#limit {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 6px solid red;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  font-weight: bold;
-}
-
-#speed {
-  margin-top: 6px;
-  background: #333;
-  color: white;
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 16px;
+  z-index: 1000;
   text-align: center;
 }
 
-/* Camera button */
-#cameraBtn {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  width: 64px;
-  height: 64px;
+#limit {
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
-  background: red;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border: 6px solid red;
+  background: white;
   font-size: 28px;
-  z-index: 999;
+  font-weight: bold;
+  line-height: 58px;
+}
+
+#speed {
+  margin-top: 5px;
+  background: #222;
   color: white;
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+
+/* Ícone do carro (seta simples por enquanto – base Beta 3) */
+.car {
+  width: 24px;
+  height: 40px;
+  background: linear-gradient(#111,#333);
+  border-radius: 6px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="map"></div>
-
-<div id="hud">
+<div id="speedBox">
   <div id="limit">50</div>
   <div id="speed">0 km/h</div>
 </div>
 
-<div id="cameraBtn">📷</div>
+<div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// =======================
-// CONFIG
-// =======================
-let followMode = true;
-let lastPos = null;
-let lastTime = null;
-let currentHeading = 0;
-
-// limite simulado
-let speedLimit = 50;
-
-// =======================
-// MAPA
-// =======================
+/* ================= MAPA ================= */
 const map = L.map('map', {
   zoomControl: false,
   attributionControl: false
-}).setView([0, 0], 18);
+}).setView([0,0], 18);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// =======================
-// SPRITE JEEP (estilo Uber)
-// =======================
-const jeepIcon = L.divIcon({
+/* ================= ÍCONE CARRO ================= */
+const carIcon = L.divIcon({
   className: '',
-  html: `
-<svg width="44" height="70" viewBox="0 0 44 70">
-  <!-- Sombra -->
-  <ellipse cx="22" cy="38" rx="16" ry="26" fill="rgba(0,0,0,0.25)"/>
-
-  <!-- Corpo principal -->
-  <rect x="10" y="6" width="24" height="58" rx="8" fill="#111"/>
-
-  <!-- Capô -->
-  <rect x="12" y="8" width="20" height="12" rx="4" fill="#1b1b1b"/>
-
-  <!-- Teto -->
-  <rect x="12" y="22" width="20" height="20" rx="5" fill="#222"/>
-
-  <!-- Porta-malas -->
-  <rect x="12" y="46" width="20" height="12" rx="4" fill="#1a1a1a"/>
-
-  <!-- Rodas -->
-  <rect x="6" y="18" width="4" height="12" rx="2" fill="#444"/>
-  <rect x="34" y="18" width="4" height="12" rx="2" fill="#444"/>
-  <rect x="6" y="40" width="4" height="12" rx="2" fill="#444"/>
-  <rect x="34" y="40" width="4" height="12" rx="2" fill="#444"/>
-
-  <!-- Lanternas traseiras -->
-  <rect x="12" y="56" width="6" height="6" rx="2" fill="#c00"/>
-  <rect x="26" y="56" width="6" height="6" rx="2" fill="#c00"/>
-</svg>
-`,
-  iconSize: [44, 70],
-  iconAnchor: [22, 35]
+  html: '<div class="car"></div>',
+  iconSize: [24, 40],
+  iconAnchor: [12, 20]
 });
-const el = jeepMarker.getElement();
-if (el) {
-  el.style.transform = `rotate(${heading}deg)`;
-}
-const jeepMarker = L.marker([0, 0], {
-  icon: jeepIcon,
-  rotationAngle: 0
+
+let carMarker = L.marker([0,0], { icon: carIcon }).addTo(map);
+
+/* ================= RADAR FIXO (EXEMPLO) ================= */
+const radarPoint = L.latLng(-22.3145, -49.0585); // exemplo
+L.circleMarker(radarPoint, {
+  radius: 8,
+  color: 'red',
+  fillColor: 'red',
+  fillOpacity: 1
 }).addTo(map);
 
-// =======================
-// BOTÃO CÂMERA
-// =======================
-const camBtn = document.getElementById('cameraBtn');
+/* ================= SOM DO RADAR ================= */
+const radarSound = new Audio("data:audio/mp3;base64,{{B64}}".replace("{{B64}}", `
+{{AUDIO_BASE64}}
+`));
 
-camBtn.onclick = () => {
-  followMode = !followMode;
-  camBtn.style.background = followMode ? 'red' : 'green';
-};
+let radarTriggered = false;
 
-// =======================
-// GPS
-// =======================
+/* ================= GPS ================= */
+let lastPos = null;
+
 navigator.geolocation.watchPosition(pos => {
   const lat = pos.coords.latitude;
-  const lng = pos.coords.longitude;
-  const heading = pos.coords.heading || currentHeading;
+  const lon = pos.coords.longitude;
+  const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
+  const heading = pos.coords.heading || 0;
 
-  // suavização
-  currentHeading = heading;
+  const current = L.latLng(lat, lon);
 
-  jeepMarker.setLatLng([lat, lng]);
+  // Atualiza velocidade
+  document.getElementById("speed").innerText = speed.toFixed(0) + " km/h";
 
-  // rotação visual
-  jeepMarker.getElement().style.transform =
-    `rotate(${heading}deg)`;
-
-  if (followMode) {
-    map.setView([lat, lng], map.getZoom(), {
-      animate: true,
-      duration: 0.5
-    });
-    map.getPane('mapPane').style.transform =
-      `rotate(${-heading}deg)`;
+  // Movimento suave
+  if (lastPos) {
+    carMarker.setLatLng(current);
+  } else {
+    carMarker.setLatLng(current);
+    map.setView(current, 18);
   }
 
-  // velocidade
-  if (lastPos && lastTime) {
-    const dist = map.distance(lastPos, [lat, lng]);
-    const timeDiff = (Date.now() - lastTime) / 1000;
-    const speed = (dist / timeDiff) * 3.6;
-
-    document.getElementById('speed').innerText =
-      speed.toFixed(0) + ' km/h';
-
-    if (speed > speedLimit) {
-      document.getElementById('limit').style.background = 'red';
-      document.getElementById('limit').style.color = 'white';
-    } else {
-      document.getElementById('limit').style.background = 'white';
-      document.getElementById('limit').style.color = 'black';
-    }
+  // Rotação do carro
+  const carEl = carMarker.getElement()?.querySelector(".car");
+  if (carEl) {
+    carEl.style.transform = `rotate(${heading}deg)`;
   }
 
-  lastPos = [lat, lng];
-  lastTime = Date.now();
+  // Rotação do mapa
+  map.getPane('mapPane').style.transform = `rotate(${-heading}deg)`;
+  map.getPane('mapPane').style.transformOrigin = "50% 50%";
+
+  map.panTo(current, { animate: false });
+
+  /* ===== RADAR – 50 METROS ===== */
+  const dist = current.distanceTo(radarPoint);
+  if (dist < 50 && !radarTriggered) {
+    radarSound.play();
+    radarTriggered = true;
+  }
+
+  if (dist > 80) radarTriggered = false;
+
+  lastPos = current;
 
 }, err => {
   alert("Erro GPS");
 }, {
   enableHighAccuracy: true,
-  maximumAge: 500,
+  maximumAge: 0,
   timeout: 10000
 });
 </script>
