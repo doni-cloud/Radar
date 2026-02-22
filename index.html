@@ -115,31 +115,40 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const jeepIcon = L.divIcon({
   className: '',
   html: `
-<svg width="40" height="60" viewBox="0 0 40 60">
-  <!-- Corpo -->
-  <rect x="6" y="6" width="28" height="48" rx="8" fill="#111"/>
+<svg width="44" height="70" viewBox="0 0 44 70">
+  <!-- Sombra -->
+  <ellipse cx="22" cy="38" rx="16" ry="26" fill="rgba(0,0,0,0.25)"/>
 
-  <!-- Vidro -->
-  <rect x="10" y="10" width="20" height="18" rx="4" fill="#222"/>
+  <!-- Corpo principal -->
+  <rect x="10" y="6" width="24" height="58" rx="8" fill="#111"/>
 
-  <!-- Lanterna esquerda -->
-  <rect x="8" y="34" width="6" height="8" rx="2" fill="#c00"/>
-  <line x1="8" y1="34" x2="14" y2="42" stroke="#fff" stroke-width="1"/>
-  <line x1="14" y1="34" x2="8" y2="42" stroke="#fff" stroke-width="1"/>
+  <!-- Capô -->
+  <rect x="12" y="8" width="20" height="12" rx="4" fill="#1b1b1b"/>
 
-  <!-- Lanterna direita -->
-  <rect x="26" y="34" width="6" height="8" rx="2" fill="#c00"/>
-  <line x1="26" y1="34" x2="32" y2="42" stroke="#fff" stroke-width="1"/>
-  <line x1="32" y1="34" x2="26" y2="42" stroke="#fff" stroke-width="1"/>
+  <!-- Teto -->
+  <rect x="12" y="22" width="20" height="20" rx="5" fill="#222"/>
 
-  <!-- Para-choque -->
-  <rect x="10" y="48" width="20" height="4" rx="2" fill="#333"/>
+  <!-- Porta-malas -->
+  <rect x="12" y="46" width="20" height="12" rx="4" fill="#1a1a1a"/>
+
+  <!-- Rodas -->
+  <rect x="6" y="18" width="4" height="12" rx="2" fill="#444"/>
+  <rect x="34" y="18" width="4" height="12" rx="2" fill="#444"/>
+  <rect x="6" y="40" width="4" height="12" rx="2" fill="#444"/>
+  <rect x="34" y="40" width="4" height="12" rx="2" fill="#444"/>
+
+  <!-- Lanternas traseiras -->
+  <rect x="12" y="56" width="6" height="6" rx="2" fill="#c00"/>
+  <rect x="26" y="56" width="6" height="6" rx="2" fill="#c00"/>
 </svg>
 `,
-  iconSize: [40, 60],
-  iconAnchor: [20, 30]
+  iconSize: [44, 70],
+  iconAnchor: [22, 35]
 });
-
+const el = jeepMarker.getElement();
+if (el) {
+  el.style.transform = `rotate(${heading}deg)`;
+}
 const jeepMarker = L.marker([0, 0], {
   icon: jeepIcon,
   rotationAngle: 0
