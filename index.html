@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Jeep Navigation Beta 3</title>
+<title>Navegação Jeep Beta 3</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -12,13 +13,13 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: #111;
+  background: #000;
   font-family: Arial, sans-serif;
 }
 
 #map {
-  height: 100%;
   width: 100%;
+  height: 100%;
 }
 
 /* HUD */
@@ -27,29 +28,29 @@ html, body {
   top: 10px;
   left: 10px;
   z-index: 999;
-  color: #fff;
-}
-
-.box {
-  background: rgba(0,0,0,0.7);
-  padding: 8px 12px;
-  border-radius: 10px;
-  margin-bottom: 6px;
-  font-size: 16px;
 }
 
 #limit {
-  font-size: 28px;
-  font-weight: bold;
-  border: 6px solid red;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  width: 70px;
-  height: 70px;
+  border: 6px solid red;
+  background: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
-  color: #000;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+#speed {
+  margin-top: 6px;
+  background: #333;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 16px;
+  text-align: center;
 }
 
 /* Camera button */
@@ -57,13 +58,16 @@ html, body {
   position: absolute;
   bottom: 20px;
   right: 20px;
-  z-index: 999;
-  background: red;
-  color: white;
-  padding: 14px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  font-size: 20px;
-  cursor: pointer;
+  background: red;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  z-index: 999;
+  color: white;
 }
 </style>
 </head>
@@ -74,7 +78,7 @@ html, body {
 
 <div id="hud">
   <div id="limit">50</div>
-  <div class="box" id="speed">0 km/h</div>
+  <div id="speed">0 km/h</div>
 </div>
 
 <div id="cameraBtn">📷</div>
@@ -82,83 +86,136 @@ html, body {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// ===== MAPA =====
-const map = L.map('map', { zoomControl: false }).setView([-23.55, -46.63], 17);
+// =======================
+// CONFIG
+// =======================
+let followMode = true;
+let lastPos = null;
+let lastTime = null;
+let currentHeading = 0;
+
+// limite simulado
+let speedLimit = 50;
+
+// =======================
+// MAPA
+// =======================
+const map = L.map('map', {
+  zoomControl: false,
+  attributionControl: false
+}).setView([0, 0], 18);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
+  maxZoom: 19
 }).addTo(map);
 
-// ===== ICONES =====
-const jeepIcon = L.icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/744/744465.png',
-  iconSize: [48,48],
-  iconAnchor: [24,24]
+// =======================
+// SPRITE JEEP (estilo Uber)
+// =======================
+const jeepIcon = L.divIcon({
+  className: '',
+  html: `
+    <div style="
+      width:40px;
+      height:70px;
+      background:
+        radial-gradient(circle at 50% 20%, #333 20%, #111 60%);
+      border-radius: 10px;
+      box-shadow: inset 0 0 6px #000;
+      position: relative;
+    ">
+      <div style="
+        position:absolute;
+        bottom:-6px;
+        left:6px;
+        width:8px;
+        height:12px;
+        background:#444;
+        border-radius:3px;
+      "></div>
+      <div style="
+        position:absolute;
+        bottom:-6px;
+        right:6px;
+        width:8px;
+        height:12px;
+        background:#444;
+        border-radius:3px;
+      "></div>
+    </div>
+  `,
+  iconSize: [40, 70],
+  iconAnchor: [20, 35]
 });
 
-const radarIcon = L.icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/484/484613.png',
-  iconSize: [36,36]
-});
-
-const semaforoIcon = L.icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/484/484167.png',
-  iconSize: [36,36]
-});
-
-// ===== MARCADORES =====
-const jeep = L.marker([-23.55, -46.63], {
+const jeepMarker = L.marker([0, 0], {
   icon: jeepIcon,
   rotationAngle: 0
 }).addTo(map);
 
-L.marker([-23.551, -46.632], { icon: radarIcon }).addTo(map);
-L.marker([-23.549, -46.631], { icon: semaforoIcon }).addTo(map);
+// =======================
+// BOTÃO CÂMERA
+// =======================
+const camBtn = document.getElementById('cameraBtn');
 
-// ===== VARIÁVEIS =====
-let lastPos = null;
-let cameraLock = true;
-let speedLimit = 50;
-
-// ===== CAMERA =====
-document.getElementById('cameraBtn').onclick = () => {
-  cameraLock = !cameraLock;
-  document.getElementById('cameraBtn').style.background =
-    cameraLock ? 'red' : 'green';
+camBtn.onclick = () => {
+  followMode = !followMode;
+  camBtn.style.background = followMode ? 'red' : 'green';
 };
 
-// ===== GPS REAL =====
+// =======================
+// GPS
+// =======================
 navigator.geolocation.watchPosition(pos => {
   const lat = pos.coords.latitude;
-  const lon = pos.coords.longitude;
-  const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
-  const heading = pos.coords.heading || 0;
+  const lng = pos.coords.longitude;
+  const heading = pos.coords.heading || currentHeading;
 
-  jeep.setLatLng([lat, lon]);
-  jeep.setRotationAngle(heading);
+  // suavização
+  currentHeading = heading;
 
-  if (cameraLock) {
-    map.setView([lat, lon], map.getZoom(), { animate: true });
+  jeepMarker.setLatLng([lat, lng]);
+
+  // rotação visual
+  jeepMarker.getElement().style.transform =
+    `rotate(${heading}deg)`;
+
+  if (followMode) {
+    map.setView([lat, lng], map.getZoom(), {
+      animate: true,
+      duration: 0.5
+    });
+    map.getPane('mapPane').style.transform =
+      `rotate(${-heading}deg)`;
   }
 
-  document.getElementById('speed').innerText =
-    speed.toFixed(0) + ' km/h';
+  // velocidade
+  if (lastPos && lastTime) {
+    const dist = map.distance(lastPos, [lat, lng]);
+    const timeDiff = (Date.now() - lastTime) / 1000;
+    const speed = (dist / timeDiff) * 3.6;
 
-  // ===== LIMITE SIMPLES =====
-  speedLimit = speed > 80 ? 110 : speed > 60 ? 80 : 50;
-  document.getElementById('limit').innerText = speedLimit;
+    document.getElementById('speed').innerText =
+      speed.toFixed(0) + ' km/h';
 
-  if (speed > speedLimit) {
-    document.body.style.background = '#400';
-  } else {
-    document.body.style.background = '#111';
+    if (speed > speedLimit) {
+      document.getElementById('limit').style.background = 'red';
+      document.getElementById('limit').style.color = 'white';
+    } else {
+      document.getElementById('limit').style.background = 'white';
+      document.getElementById('limit').style.color = 'black';
+    }
   }
+
+  lastPos = [lat, lng];
+  lastTime = Date.now();
 
 }, err => {
-  alert('Ative o GPS');
+  alert("Erro GPS");
 }, {
   enableHighAccuracy: true,
-  maximumAge: 0
+  maximumAge: 500,
+  timeout: 10000
 });
 </script>
 
