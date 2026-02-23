@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>GPS Jeep Renegade – Beta 3.1</title>
+<title>GPS Jeep Renegade – Beta 3.2</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -17,10 +17,9 @@ html, body {
 #map {
   width: 100%;
   height: 100%;
-  transform-origin: 50% 50%;
 }
 
-/* LIMITE DA VIA */
+/* LIMITE */
 #limitBox {
   position: absolute;
   top: 12px;
@@ -51,7 +50,7 @@ html, body {
   z-index: 1000;
 }
 
-/* BOTÃO CÂMERA */
+/* BOTÃO CAMERA */
 #freeCam {
   position: absolute;
   right: 16px;
@@ -68,20 +67,6 @@ html, body {
   z-index: 1000;
   cursor: pointer;
 }
-
-/* FUMAÇA */
-@keyframes smoke {
-  from { opacity: 0.6; transform: translate(0,0) scale(1); }
-  to   { opacity: 0; transform: translate(-12px,12px) scale(1.7); }
-}
-.smoke {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background: rgba(200,200,200,0.6);
-  border-radius: 50%;
-  animation: smoke 1s linear infinite;
-}
 </style>
 </head>
 
@@ -95,14 +80,13 @@ html, body {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-/* ================= MAPA ================= */
+/* MAPA */
 const map = L.map('map', { zoomControl: false }).setView([0,0], 18);
-
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-/* ================= CONFIG ================= */
+/* CONFIG */
 let followGPS = true;
 let speedLimit = 50;
 let speedBuffer = [];
@@ -110,11 +94,16 @@ let jeepMarker = null;
 let lastPos = null;
 let lastHeading = 0;
 
-/* ================= JEEP ================= */
+/* ICON JEEP (ROTACIONÁVEL) */
 const jeepIcon = L.divIcon({
   className: '',
   html: `
-  <div style="position:relative;width:48px;height:70px;">
+  <div id="jeep" style="
+    width:48px;
+    height:70px;
+    transform-origin:50% 50%;
+    transition: transform 0.25s linear;
+  ">
     <svg width="48" height="70" viewBox="0 0 48 70">
       <ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
       <rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
@@ -122,53 +111,35 @@ const jeepIcon = L.divIcon({
       <rect x="15" y="8" width="18" height="8" rx="3" fill="#1c1c1c"/>
       <circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
       <circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
-      <rect x="18" y="50" width="12" height="5" rx="1.5" fill="#ccc"/>
     </svg>
-    <div class="smoke" style="left:10px;bottom:4px"></div>
-    <div class="smoke" style="right:10px;bottom:4px;animation-delay:.3s"></div>
-  </div>`
-,
+  </div>
+  `,
   iconSize: [48,70],
   iconAnchor: [24,35]
 });
 
-/* ================= BOTÃO CÂMERA ================= */
+/* BOTÃO CAMERA */
 freeCam.onclick = () => {
   followGPS = !followGPS;
   freeCam.style.background = followGPS ? "red" : "green";
 };
 
-/* ================= FUNÇÕES ================= */
+/* FUNÇÕES */
 function calcularDirecao(lat1, lon1, lat2, lon2) {
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
   const x =
     Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
-    Math.sin(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
-    Math.cos(dLon);
+    Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
   return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
-/* ================= RADAR ================= */
-const radarPoint = L.latLng(-22.3145, -49.0585); // exemplo
-let radarPlayed = false;
-
-// som bip (estável)
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playBeep() {
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = "square";
-  osc.frequency.value = 1200;
-  gain.gain.value = 0.2;
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.15);
+function suavizarAngulo(atual, alvo) {
+  let diff = ((alvo - atual + 540) % 360) - 180;
+  return atual + diff * 0.25;
 }
 
-/* ================= GPS ================= */
+/* GPS */
 navigator.geolocation.watchPosition(pos => {
   const lat = pos.coords.latitude;
   const lng = pos.coords.longitude;
@@ -182,32 +153,20 @@ navigator.geolocation.watchPosition(pos => {
   limitBox.style.background = speed > speedLimit ? "red" : "white";
   limitBox.style.color = speed > speedLimit ? "white" : "black";
 
-  if (!jeepMarker) {
-    jeepMarker = L.marker([lat,lng], { icon: jeepIcon, interactive:false }).addTo(map);
-  } else {
-    jeepMarker.setLatLng([lat,lng]);
-  }
+  if (jeepMarker) jeepMarker.setLatLng([lat,lng]);
+  else jeepMarker = L.marker([lat,lng], { icon: jeepIcon, interactive:false }).addTo(map);
 
   if (lastPos) {
-    lastHeading = calcularDirecao(lastPos.lat, lastPos.lng, lat, lng);
-  }
+    const ang = calcularDirecao(lastPos.lat, lastPos.lng, lat, lng);
+    lastHeading = suavizarAngulo(lastHeading, ang);
 
-  // gira mapa 360
-  map.getContainer().style.transform = `rotate(${-lastHeading}deg)`;
-
-  if (followGPS) {
-    map.setView([lat,lng], map.getZoom(), { animate:false });
+    const jeepEl = document.getElementById("jeep");
+    if (jeepEl) jeepEl.style.transform = `rotate(${lastHeading}deg)`;
   }
-
-  // radar bip
-  const dist = L.latLng(lat,lng).distanceTo(radarPoint);
-  if (dist < 50 && !radarPlayed) {
-    playBeep();
-    radarPlayed = true;
-  }
-  if (dist > 80) radarPlayed = false;
 
   lastPos = { lat, lng };
+
+  if (followGPS) map.setView([lat,lng], map.getZoom(), { animate:false });
 
 }, err => alert("Erro GPS: " + err.message), {
   enableHighAccuracy: true,
