@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>GPS Jeep Renegade – Beta 4</title>
+<title>GPS Jeep Renegade – Beta 3 Final</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -38,7 +37,7 @@ html, body {
   z-index: 1000;
 }
 
-/* VELOCIDADE ATUAL */
+/* VELOCIDADE */
 #speedBox {
   position: absolute;
   top: 100px;
@@ -71,53 +70,38 @@ html, body {
 
 /* BOTÃO CONFIG */
 #configBtn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 46px;
-  height: 46px;
-  background: #111;
-  color: white;
-  border-radius: 50%;
-  font-size: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1001;
-  cursor: pointer;
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:46px;
+  height:46px;
+  background:#000;
+  color:white;
+  border-radius:50%;
+  font-size:22px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+  cursor:pointer;
 }
 
 /* MENU CONFIG */
-#configMenu {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.88);
-  color: white;
-  display: none;
-  z-index: 2000;
-  padding: 20px;
+#soundMenu {
+  position:absolute;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,0.85);
+  color:white;
+  z-index:2000;
+  display:none;
+  padding:20px;
 }
 
-.menuBox {
-  margin-top: 40px;
-  background: #1a1a1a;
-  padding: 20px;
-  border-radius: 12px;
-}
-
-.menuItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 14px;
-}
-
-/* ÍCONE RADAR */
-.radarIcon {
-  width: 32px;
-  height: 32px;
-  background: url("data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjRkYwMDAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjkiLz48cGF0aCBkPSJNMTIgM2E5IDkgMCAwIDEgMCAxOCIvPjwvc3ZnPg==") no-repeat center;
-  background-size: contain;
+#soundMenu button {
+  padding:12px;
+  font-size:16px;
+  margin-top:12px;
 }
 
 /* FUMAÇA */
@@ -144,116 +128,102 @@ html, body {
 <div id="freeCam">📷</div>
 <div id="configBtn">⚙️</div>
 
-<div id="configMenu">
-  <button onclick="closeConfig()">⬅ Voltar</button>
-  <div class="menuBox">
-    <h3>Som</h3>
-    <div class="menuItem">
-      <span>Alerta Radar</span>
-      <button onclick="toggleSound()">Testar Bip</button>
-      <span id="soundStatus">Ativo</span>
-    </div>
-  </div>
+<!-- MENU SOM -->
+<div id="soundMenu">
+  <button onclick="closeSoundMenu()">⬅ Voltar</button>
+  <h2>Som</h2>
+  <button onclick="testBeep()">🔊 Testar Bip</button>
+  <span id="soundStatus" style="margin-left:12px;color:#0f0">INATIVO</span>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 /* MAPA */
-const map = L.map('map', { zoomControl:false }).setView([-22.3145,-49.0587], 15);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ maxZoom:19 }).addTo(map);
+const map = L.map('map', { zoomControl: false }).setView([0,0], 18);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
 
 /* CONFIG */
 let followGPS = true;
-let soundEnabled = true;
 let speedLimit = 50;
-let jeepMarker = null;
 let speedBuffer = [];
-let triggeredRadars = new Set();
+let jeepMarker = null;
 
-/* JEEP */
+/* ÍCONE JEEP */
 const jeepIcon = L.divIcon({
-  className:'',
-  html:`
-  <div style="width:48px;height:70px;position:relative">
-    <svg width="48" height="70">
-      <ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,.45)"/>
+  className: '',
+  html: `
+  <div style="position:relative;width:48px;height:70px;">
+    <svg width="48" height="70" viewBox="0 0 48 70">
+      <ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
       <rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
-      <rect x="12" y="4" width="24" height="12" rx="6" fill="#111"/>
+      <circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
+      <circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
     </svg>
     <div class="smoke" style="left:10px;bottom:4px"></div>
-    <div class="smoke" style="right:10px;bottom:4px"></div>
+    <div class="smoke" style="right:10px;bottom:4px;animation-delay:.3s"></div>
   </div>`,
-  iconSize:[48,70],
-  iconAnchor:[24,35]
+  iconSize: [48,70],
+  iconAnchor: [24,35]
 });
 
-/* RADARES (Bauru + Rodovias) */
-const radars = [
-  [-22.3142,-49.0581], // Nações Unidas
-  [-22.3131,-49.0675], // Castelo Branco
-  [-22.3298,-49.0952], // Getúlio Vargas
-  [-22.3434,-49.1019], // SP-300
-  [-22.3391,-49.0568], // SP-321
-  [-22.2851,-49.1602], // SP-294
-  [-22.2304,-49.2156]  // SP-273
-];
-
-const radarIcon = L.divIcon({
-  className:'',
-  html:`<div class="radarIcon"></div>`,
-  iconSize:[32,32],
-  iconAnchor:[16,16]
-});
-
-radars.forEach((r,i)=>{
-  L.marker(r,{icon:radarIcon}).addTo(map).radarId=i;
-});
-
-/* SOM BIP */
-const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=");
-
-/* BOTÕES */
-freeCam.onclick=()=>{
-  followGPS=!followGPS;
-  freeCam.style.background = followGPS ? "red":"green";
+/* CÂMERA */
+freeCam.onclick = () => {
+  followGPS = !followGPS;
+  freeCam.style.background = followGPS ? "red" : "green";
 };
 
-configBtn.onclick=()=> configMenu.style.display="block";
-function closeConfig(){ configMenu.style.display="none"; }
-function toggleSound(){
-  audio.play();
-  soundEnabled=!soundEnabled;
-  soundStatus.innerText = soundEnabled ? "Ativo":"Desativado";
+/* CONFIG MENU */
+configBtn.onclick = () => {
+  soundMenu.style.display = "block";
+};
+function closeSoundMenu(){
+  soundMenu.style.display = "none";
+}
+
+/* SOM BIP (SEM MP3) */
+let audioCtx = null;
+function testBeep(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "square";
+  osc.frequency.value = 1000;
+  gain.gain.value = 0.2;
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  setTimeout(()=>osc.stop(),200);
+  soundStatus.innerText = "ATIVO";
 }
 
 /* GPS */
-navigator.geolocation.watchPosition(pos=>{
-  const lat=pos.coords.latitude;
-  const lng=pos.coords.longitude;
-  const sp=pos.coords.speed?pos.coords.speed*3.6:0;
+navigator.geolocation.watchPosition(pos => {
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  const rawSpeed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
 
-  speedBuffer.push(sp);
-  if(speedBuffer.length>6) speedBuffer.shift();
-  const speed=speedBuffer.reduce((a,b)=>a+b,0)/speedBuffer.length;
-  speedBox.innerText=Math.round(speed)+" km/h";
+  speedBuffer.push(rawSpeed);
+  if (speedBuffer.length > 6) speedBuffer.shift();
+  const speed = speedBuffer.reduce((a,b)=>a+b,0) / speedBuffer.length;
 
-  if(jeepMarker) map.removeLayer(jeepMarker);
-  jeepMarker=L.marker([lat,lng],{icon:jeepIcon}).addTo(map);
+  speedBox.innerText = Math.round(speed) + " km/h";
+  limitBox.style.background = speed > speedLimit ? "red" : "white";
+  limitBox.style.color = speed > speedLimit ? "white" : "black";
 
-  if(followGPS){
-    map.panTo([lat,lng],{animate:false});
-  }
+  if (jeepMarker) map.removeLayer(jeepMarker);
+  jeepMarker = L.marker([lat,lng], { icon: jeepIcon }).addTo(map);
 
-  radars.forEach((r,i)=>{
-    const d = map.distance([lat,lng],r);
-    if(d<50 && !triggeredRadars.has(i)){
-      triggeredRadars.add(i);
-      if(soundEnabled) audio.play();
-    }
-  });
+  if (followGPS) map.setView([lat,lng], map.getZoom(), { animate:false });
 
-},{ enableHighAccuracy:true });
+}, err => alert("Erro GPS: " + err.message), {
+  enableHighAccuracy:true,
+  timeout:10000
+});
 </script>
 
 </body>
