@@ -1,109 +1,85 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>GPS Jeep – Radar Teste</title>
+<title>Radar GPS Beta 3</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body {
+html, body, #map {
   margin: 0;
-  height: 100%;
-}
-
-#map {
   width: 100%;
   height: 100%;
 }
 
 /* LIMITE */
-#limitBox {
+#limit {
   position: absolute;
   top: 12px;
   left: 12px;
-  width: 78px;
-  height: 78px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   border: 6px solid red;
   background: white;
+  font-size: 26px;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
-  font-weight: bold;
   z-index: 1000;
 }
 
 /* VELOCIDADE */
-#speedBox {
+#speed {
   position: absolute;
-  top: 100px;
+  top: 96px;
   left: 22px;
   background: #111;
-  color: white;
+  color: #fff;
   padding: 8px 14px;
   border-radius: 10px;
   font-size: 18px;
   z-index: 1000;
 }
 
-/* BOTÃO CÂMERA */
-#freeCam {
-  position: absolute;
-  right: 16px;
-  bottom: 20px;
-  width: 56px;
-  height: 56px;
-  background: red;
-  color: white;
-  border-radius: 50%;
-  font-size: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  cursor: pointer;
-}
-
 /* BOTÃO CONFIG */
 #configBtn {
   position: absolute;
-  right: 16px;
-  top: 16px;
+  top: 14px;
+  right: 14px;
   width: 48px;
   height: 48px;
+  border-radius: 50%;
   background: #111;
   color: white;
-  border-radius: 50%;
   font-size: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  cursor: pointer;
 }
 
-/* MENU CONFIG */
-#configMenu {
+/* MENU */
+#menu {
   position: absolute;
   inset: 0;
   background: rgba(0,0,0,0.85);
   color: white;
   display: none;
-  flex-direction: column;
   z-index: 2000;
   padding: 20px;
 }
 
-.config-item {
-  background: #222;
-  padding: 14px;
-  border-radius: 10px;
-  margin-top: 10px;
-  cursor: pointer;
+.menuItem {
+  margin-top: 20px;
+  font-size: 18px;
+}
+button {
+  padding: 10px 16px;
+  font-size: 16px;
 }
 </style>
 </head>
@@ -111,109 +87,118 @@ html, body {
 <body>
 
 <div id="map"></div>
-<div id="limitBox">50</div>
-<div id="speedBox">0 km/h</div>
-<div id="freeCam">📷</div>
+<div id="limit">50</div>
+<div id="speed">0 km/h</div>
 <div id="configBtn">⚙️</div>
 
-<div id="configMenu">
-  <div class="config-item" onclick="testRadarSound()">🔊 Testar som do radar</div>
-  <div class="config-item" onclick="closeConfig()">⬅️ Voltar</div>
+<div id="menu">
+  <button onclick="toggleMenu()">⬅ Voltar</button>
+
+  <div class="menuItem">
+    <b>Som do Radar:</b>
+    <button onclick="toggleSound()">Ativo</button>
+  </div>
+
+  <div class="menuItem">
+    <button onclick="playBeep()">🔊 Testar Bip</button>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 /* MAPA */
-const map = L.map('map', { zoomControl: false }).setView([-22.33162, -49.05685], 18);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
+const map = L.map('map', { zoomControl:false }).setView([-22.33287, -49.05661], 18);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 
-/* CONTROLES */
-let followGPS = true;
-let speedLimit = 50;
-let jeepMarker = null;
+/* SOM */
+let soundOn = true;
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playBeep(){
+  if(!soundOn) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.frequency.value = 1100;
+  gain.gain.value = 0.15;
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.15);
+}
+
+/* MENU */
+function toggleMenu(){
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+function toggleSound(){
+  soundOn = !soundOn;
+}
+configBtn.onclick = toggleMenu;
 
 /* ÍCONE DO CARRO */
-const jeepIcon = L.divIcon({
-  className: '',
-  html: `
-  <div style="width:26px;height:40px;background:#111;border-radius:8px;position:relative">
-    <div style="position:absolute;bottom:-6px;left:6px;width:14px;height:6px;background:#555;border-radius:3px"></div>
+const carIcon = L.divIcon({
+  className:'',
+  html:`<div style="
+    width:26px;height:42px;
+    background:#111;
+    border-radius:6px;
+    position:relative;">
     <div style="position:absolute;bottom:6px;left:4px;width:6px;height:6px;background:red;border-radius:50%"></div>
     <div style="position:absolute;bottom:6px;right:4px;width:6px;height:6px;background:red;border-radius:50%"></div>
-  </div>
-  `,
-  iconSize: [26,40],
-  iconAnchor: [13,20]
+  </div>`,
+  iconSize:[26,42],
+  iconAnchor:[13,21]
 });
 
-/* RADAR TESTE (LOCAL EXATO) */
+/* ÍCONE DO RADAR – SEM FUNDO */
 const radarIcon = L.divIcon({
-  className: '',
-  html: `
-    <div style="
-      width:28px;
-      height:28px;
-      background:#1f1f1f;
-      border-radius:50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      box-shadow:0 0 6px rgba(0,0,0,0.6);
-    ">📷</div>
+  className:'',
+  html:`
+  <svg width="32" height="32" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="48" fill="white" stroke="red" stroke-width="10"/>
+    <rect x="20" y="30" width="60" height="35" rx="6" fill="#111"/>
+    <circle cx="50" cy="48" r="10" fill="white"/>
+    <rect x="45" y="65" width="10" height="15" fill="#111"/>
+  </svg>
   `,
-  iconSize: [28,28],
-  iconAnchor: [14,14]
+  iconSize:[32,32],
+  iconAnchor:[16,16]
 });
 
-L.marker([-22.33162, -49.05685], {
-  icon: radarIcon,
-  interactive: false
-}).addTo(map);
+/* RADAR FIXO (LOCAL QUE VOCÊ MARCOU) */
+const radarLatLng = [-22.33287, -49.05661];
+L.marker(radarLatLng,{icon:radarIcon}).addTo(map);
 
 /* GPS */
-navigator.geolocation.watchPosition(pos => {
+let carMarker = null;
+let lastPos = null;
+
+navigator.geolocation.watchPosition(pos=>{
   const lat = pos.coords.latitude;
   const lng = pos.coords.longitude;
   const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
+  speedDiv = document.getElementById('speed');
+  speedDiv.innerText = Math.round(speed) + " km/h";
 
-  speedBox.innerText = Math.round(speed) + " km/h";
+  if(carMarker) map.removeLayer(carMarker);
 
-  if (jeepMarker) map.removeLayer(jeepMarker);
-  jeepMarker = L.marker([lat,lng], { icon: jeepIcon }).addTo(map);
-
-  if (followGPS) {
-    map.setView([lat,lng], map.getZoom(), { animate: false });
+  let rotation = 0;
+  if(lastPos){
+    rotation = Math.atan2(lng-lastPos.lng, lat-lastPos.lat) * 180 / Math.PI;
   }
+
+  carMarker = L.marker([lat,lng],{
+    icon: carIcon,
+    rotationAngle: rotation
+  }).addTo(map);
+
+  map.setView([lat,lng], map.getZoom(), {animate:false});
+  lastPos = {lat,lng};
+
+  /* DISTÂNCIA DO RADAR */
+  const d = map.distance([lat,lng], radarLatLng);
+  if(d < 50) playBeep();
 });
-
-/* BOTÕES */
-freeCam.onclick = () => {
-  followGPS = !followGPS;
-  freeCam.style.background = followGPS ? "red" : "green";
-};
-
-configBtn.onclick = () => configMenu.style.display = "flex";
-function closeConfig() { configMenu.style.display = "none"; }
-
-/* 🔊 SOM DE RADAR (NOVO – EMBUTIDO) */
-function testRadarSound() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-
-  o.type = "square";
-  o.frequency.value = 1200;
-  g.gain.value = 0.4;
-
-  o.connect(g);
-  g.connect(ctx.destination);
-
-  o.start();
-  setTimeout(() => o.stop(), 180);
-}
 </script>
 
 </body>
