@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>GPS Jeep Renegade – Beta 3 Final</title>
+<title>GPS Jeep – Radar Teste</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -11,7 +12,6 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: #111;
 }
 
 #map {
@@ -19,7 +19,7 @@ html, body {
   height: 100%;
 }
 
-/* LIMITE DA VIA */
+/* LIMITE */
 #limitBox {
   position: absolute;
   top: 12px;
@@ -70,52 +70,40 @@ html, body {
 
 /* BOTÃO CONFIG */
 #configBtn {
-  position:absolute;
-  top:12px;
-  right:12px;
-  width:46px;
-  height:46px;
-  background:#000;
-  color:white;
-  border-radius:50%;
-  font-size:22px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:1000;
-  cursor:pointer;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 48px;
+  height: 48px;
+  background: #111;
+  color: white;
+  border-radius: 50%;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
 }
 
 /* MENU CONFIG */
-#soundMenu {
-  position:absolute;
-  top:0;left:0;
-  width:100%;height:100%;
-  background:rgba(0,0,0,0.85);
-  color:white;
-  z-index:2000;
-  display:none;
-  padding:20px;
-}
-
-#soundMenu button {
-  padding:12px;
-  font-size:16px;
-  margin-top:12px;
-}
-
-/* FUMAÇA */
-@keyframes smoke {
-  from { opacity: 0.6; transform: translate(0,0) scale(1); }
-  to   { opacity: 0; transform: translate(-12px,12px) scale(1.7); }
-}
-.smoke {
+#configMenu {
   position: absolute;
-  width: 10px;
-  height: 10px;
-  background: rgba(200,200,200,0.6);
-  border-radius: 50%;
-  animation: smoke 1s linear infinite;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  color: white;
+  display: none;
+  flex-direction: column;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.config-item {
+  background: #222;
+  padding: 14px;
+  border-radius: 10px;
+  margin-top: 10px;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -128,102 +116,104 @@ html, body {
 <div id="freeCam">📷</div>
 <div id="configBtn">⚙️</div>
 
-<!-- MENU SOM -->
-<div id="soundMenu">
-  <button onclick="closeSoundMenu()">⬅ Voltar</button>
-  <h2>Som</h2>
-  <button onclick="testBeep()">🔊 Testar Bip</button>
-  <span id="soundStatus" style="margin-left:12px;color:#0f0">INATIVO</span>
+<div id="configMenu">
+  <div class="config-item" onclick="testRadarSound()">🔊 Testar som do radar</div>
+  <div class="config-item" onclick="closeConfig()">⬅️ Voltar</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 /* MAPA */
-const map = L.map('map', { zoomControl: false }).setView([0,0], 18);
+const map = L.map('map', { zoomControl: false }).setView([-22.33162, -49.05685], 18);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-/* CONFIG */
+/* CONTROLES */
 let followGPS = true;
 let speedLimit = 50;
-let speedBuffer = [];
 let jeepMarker = null;
 
-/* ÍCONE JEEP */
+/* ÍCONE DO CARRO */
 const jeepIcon = L.divIcon({
   className: '',
   html: `
-  <div style="position:relative;width:48px;height:70px;">
-    <svg width="48" height="70" viewBox="0 0 48 70">
-      <ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
-      <rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
-      <circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
-      <circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
-    </svg>
-    <div class="smoke" style="left:10px;bottom:4px"></div>
-    <div class="smoke" style="right:10px;bottom:4px;animation-delay:.3s"></div>
-  </div>`,
-  iconSize: [48,70],
-  iconAnchor: [24,35]
+  <div style="width:26px;height:40px;background:#111;border-radius:8px;position:relative">
+    <div style="position:absolute;bottom:-6px;left:6px;width:14px;height:6px;background:#555;border-radius:3px"></div>
+    <div style="position:absolute;bottom:6px;left:4px;width:6px;height:6px;background:red;border-radius:50%"></div>
+    <div style="position:absolute;bottom:6px;right:4px;width:6px;height:6px;background:red;border-radius:50%"></div>
+  </div>
+  `,
+  iconSize: [26,40],
+  iconAnchor: [13,20]
 });
 
-/* CÂMERA */
-freeCam.onclick = () => {
-  followGPS = !followGPS;
-  freeCam.style.background = followGPS ? "red" : "green";
-};
+/* RADAR TESTE (LOCAL EXATO) */
+const radarIcon = L.divIcon({
+  className: '',
+  html: `
+    <div style="
+      width:28px;
+      height:28px;
+      background:#1f1f1f;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 0 6px rgba(0,0,0,0.6);
+    ">📷</div>
+  `,
+  iconSize: [28,28],
+  iconAnchor: [14,14]
+});
 
-/* CONFIG MENU */
-configBtn.onclick = () => {
-  soundMenu.style.display = "block";
-};
-function closeSoundMenu(){
-  soundMenu.style.display = "none";
-}
-
-/* SOM BIP (SEM MP3) */
-let audioCtx = null;
-function testBeep(){
-  if(!audioCtx){
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = "square";
-  osc.frequency.value = 1000;
-  gain.gain.value = 0.2;
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  setTimeout(()=>osc.stop(),200);
-  soundStatus.innerText = "ATIVO";
-}
+L.marker([-22.33162, -49.05685], {
+  icon: radarIcon,
+  interactive: false
+}).addTo(map);
 
 /* GPS */
 navigator.geolocation.watchPosition(pos => {
   const lat = pos.coords.latitude;
   const lng = pos.coords.longitude;
-  const rawSpeed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
-
-  speedBuffer.push(rawSpeed);
-  if (speedBuffer.length > 6) speedBuffer.shift();
-  const speed = speedBuffer.reduce((a,b)=>a+b,0) / speedBuffer.length;
+  const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
 
   speedBox.innerText = Math.round(speed) + " km/h";
-  limitBox.style.background = speed > speedLimit ? "red" : "white";
-  limitBox.style.color = speed > speedLimit ? "white" : "black";
 
   if (jeepMarker) map.removeLayer(jeepMarker);
   jeepMarker = L.marker([lat,lng], { icon: jeepIcon }).addTo(map);
 
-  if (followGPS) map.setView([lat,lng], map.getZoom(), { animate:false });
-
-}, err => alert("Erro GPS: " + err.message), {
-  enableHighAccuracy:true,
-  timeout:10000
+  if (followGPS) {
+    map.setView([lat,lng], map.getZoom(), { animate: false });
+  }
 });
+
+/* BOTÕES */
+freeCam.onclick = () => {
+  followGPS = !followGPS;
+  freeCam.style.background = followGPS ? "red" : "green";
+};
+
+configBtn.onclick = () => configMenu.style.display = "flex";
+function closeConfig() { configMenu.style.display = "none"; }
+
+/* 🔊 SOM DE RADAR (NOVO – EMBUTIDO) */
+function testRadarSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+
+  o.type = "square";
+  o.frequency.value = 1200;
+  g.gain.value = 0.4;
+
+  o.connect(g);
+  g.connect(ctx.destination);
+
+  o.start();
+  setTimeout(() => o.stop(), 180);
+}
 </script>
 
 </body>
