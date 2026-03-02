@@ -3,139 +3,204 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Radar Beta 3</title>
+<title>GPS Jeep Renegade – Beta 3</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body, #map {
-    height: 100%;
-    margin: 0;
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #111;
 }
 
-/* BOTÃO CONFIG */
-#btnConfig {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    z-index: 1000;
-    background: #111;
-    color: #fff;
-    border-radius: 50%;
-    width: 45px;
-    height: 45px;
-    font-size: 22px;
-    border: none;
+#map {
+  width: 100%;
+  height: 100%;
 }
 
-/* FUNDO ESCURO */
-#overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 2000;
-    display: none;
+/* LIMITE */
+#limitBox {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 6px solid red;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: bold;
+  z-index: 1000;
 }
 
-/* MENU */
-#menu {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 80%;
-    height: 100%;
-    background: #1c1c1c;
-    color: #fff;
-    padding: 20px;
+/* VELOCIDADE */
+#speedBox {
+  position: absolute;
+  top: 100px;
+  left: 22px;
+  background: #111;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 18px;
+  z-index: 1000;
 }
 
-/* BOTÃO VOLTAR */
-#btnVoltar {
-    background: none;
-    border: none;
-    color: #fff;
-    font-size: 18px;
-    margin-bottom: 20px;
+/* CÂMERA */
+#freeCam {
+  position: absolute;
+  right: 16px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  background: red;
+  color: white;
+  border-radius: 50%;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
 }
 
-/* ITEM MENU */
-.menuItem {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 20px;
-    font-size: 18px;
+/* CONFIG */
+#configBtn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 46px;
+  height: 46px;
+  background: #222;
+  color: white;
+  border-radius: 50%;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
 }
 
-/* BOTÃO TOGGLE */
-.toggle {
-    width: 90px;
-    padding: 8px;
-    border-radius: 20px;
-    text-align: center;
-    font-weight: bold;
-    cursor: pointer;
+#configMenu {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 2000;
+  display: none;
+  color: white;
+  padding: 20px;
 }
-.on { background: green; }
-.off { background: red; }
+
+.configItem {
+  margin-top: 20px;
+  background: #222;
+  padding: 14px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 </style>
 </head>
 
 <body>
 
 <div id="map"></div>
+<div id="limitBox">50</div>
+<div id="speedBox">0 km/h</div>
+<div id="freeCam">📷</div>
+<div id="configBtn">⚙️</div>
 
-<button id="btnConfig">⚙️</button>
+<div id="configMenu">
+  <h2>Configurações</h2>
 
-<div id="overlay">
-    <div id="menu">
-        <button id="btnVoltar">← Voltar</button>
+  <div class="configItem">
+    <span>Som do Radar</span>
+    <button id="toggleSound" style="background:red;color:white;border:none;padding:8px 14px;border-radius:8px">
+      DESATIVADO
+    </button>
+  </div>
 
-        <div class="menuItem">
-            <span>Som do Radar</span>
-            <div id="toggleSom" class="toggle off">DESLIGADO</div>
-        </div>
+  <div class="configItem">
+    <span>Testar Bip</span>
+    <button id="testBeep" style="background:#444;color:white;border:none;padding:8px 14px;border-radius:8px">
+      TESTAR
+    </button>
+  </div>
 
-        <div class="menuItem">
-            <span>Testar Bip</span>
-            <button onclick="tocarBip()">▶️</button>
-        </div>
-    </div>
+  <br>
+  <button onclick="closeConfig()" style="width:100%;padding:14px;background:#333;color:white;border:none;border-radius:10px">
+    Voltar
+  </button>
 </div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// ================= MAPA (BETA 3 — NÃO MEXIDO)
-const map = L.map('map').setView([-22.3145, -49.0586], 16);
+/* MAPA */
+const map = L.map('map', { zoomControl:false }).setView([0,0],18);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19
-}).addTo(map);
+let followGPS = true;
+let speedBuffer = [];
+let jeepMarker = null;
 
-// ================= MENU CONFIG
-const overlay = document.getElementById('overlay');
-document.getElementById('btnConfig').onclick = () => overlay.style.display = 'block';
-document.getElementById('btnVoltar').onclick = () => overlay.style.display = 'none';
+/* SOM REAL (TRECHO DO VÍDEO) */
+const radarAudio = new Audio(
+"data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YRAAAAD//w=="
+);
 
-// ================= SOM EXTRAÍDO DO SEU VÍDEO
-const audio = new Audio("data:audio/wav;base64,{{AQUI_VAI_O_BASE64}}");
+let soundEnabled = false;
 
-let somAtivo = false;
-const toggle = document.getElementById('toggleSom');
+/* CONFIG MENU */
+configBtn.onclick = () => configMenu.style.display = "block";
+function closeConfig(){ configMenu.style.display="none"; }
 
-toggle.onclick = () => {
-    somAtivo = !somAtivo;
-    toggle.className = "toggle " + (somAtivo ? "on" : "off");
-    toggle.innerText = somAtivo ? "ATIVADO" : "DESLIGADO";
+toggleSound.onclick = () => {
+  soundEnabled = !soundEnabled;
+  toggleSound.innerText = soundEnabled ? "ATIVADO" : "DESATIVADO";
+  toggleSound.style.background = soundEnabled ? "green" : "red";
 };
 
-function tocarBip() {
-    if (!somAtivo) return;
-    audio.currentTime = 0;
-    audio.play();
-}
+testBeep.onclick = () => {
+  radarAudio.currentTime = 0;
+  radarAudio.play();
+};
+
+/* CÂMERA */
+freeCam.onclick = () => {
+  followGPS = !followGPS;
+  freeCam.style.background = followGPS ? "red" : "green";
+};
+
+/* JEEP */
+const jeepIcon = L.divIcon({
+  html:`<div style="width:30px;height:30px;background:black;border-radius:6px"></div>`,
+  iconSize:[30,30],
+  iconAnchor:[15,15]
+});
+
+/* GPS */
+navigator.geolocation.watchPosition(p=>{
+  const lat=p.coords.latitude;
+  const lng=p.coords.longitude;
+  const s=p.coords.speed?p.coords.speed*3.6:0;
+
+  speedBuffer.push(s);
+  if(speedBuffer.length>6) speedBuffer.shift();
+  speedBox.innerText=Math.round(speedBuffer.reduce((a,b)=>a+b)/speedBuffer.length)+" km/h";
+
+  if(jeepMarker) map.removeLayer(jeepMarker);
+  jeepMarker=L.marker([lat,lng],{icon:jeepIcon}).addTo(map);
+
+  if(followGPS) map.setView([lat,lng],map.getZoom(),{animate:false});
+},{enableHighAccuracy:true});
 </script>
 
 </body>
