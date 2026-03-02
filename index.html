@@ -3,7 +3,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>GPS Jeep Renegade – Beta 3</title>
+<title>GPS Jeep Renegade – Beta 3 Estável</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -51,7 +51,7 @@ html, body {
   z-index: 1000;
 }
 
-/* CÂMERA */
+/* CAMERA */
 #freeCam {
   position: absolute;
   right: 16px;
@@ -74,37 +74,55 @@ html, body {
   position: absolute;
   top: 16px;
   right: 16px;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   background: #222;
   color: white;
   border-radius: 50%;
-  font-size: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1200;
   cursor: pointer;
 }
 
+/* MENU */
 #configMenu {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.85);
+  background: rgba(0,0,0,.85);
   z-index: 2000;
   display: none;
-  color: white;
   padding: 20px;
+  color: white;
 }
 
-.configItem {
-  margin-top: 20px;
-  background: #222;
-  padding: 14px;
-  border-radius: 10px;
+.configCard {
+  background: #2a2a2a;
+  border-radius: 14px;
+  padding: 18px;
+  margin-top: 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  font-size: 16px;
+  color: white;
+}
+
+.btn-green { background: green; }
+.btn-red { background: red; }
+.btn-gray { background: #555; }
+
+#backBtn {
+  width: 100%;
+  margin-top: 26px;
+  background: #444;
 }
 </style>
 </head>
@@ -117,90 +135,81 @@ html, body {
 <div id="freeCam">📷</div>
 <div id="configBtn">⚙️</div>
 
+<!-- MENU -->
 <div id="configMenu">
-  <h2>Configurações</h2>
+  <h1>Configurações</h1>
 
-  <div class="configItem">
+  <div class="configCard">
     <span>Som do Radar</span>
-    <button id="toggleSound" style="background:red;color:white;border:none;padding:8px 14px;border-radius:8px">
-      DESATIVADO
-    </button>
+    <button id="soundToggle" class="btn btn-green">ATIVADO</button>
   </div>
 
-  <div class="configItem">
+  <div class="configCard">
     <span>Testar Bip</span>
-    <button id="testBeep" style="background:#444;color:white;border:none;padding:8px 14px;border-radius:8px">
-      TESTAR
-    </button>
+    <button id="testSound" class="btn btn-gray">TESTAR</button>
   </div>
 
-  <br>
-  <button onclick="closeConfig()" style="width:100%;padding:14px;background:#333;color:white;border:none;border-radius:10px">
-    Voltar
-  </button>
+  <button id="backBtn" class="btn">Voltar</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 /* MAPA */
-const map = L.map('map', { zoomControl:false }).setView([0,0],18);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+const map = L.map('map', { zoomControl: false }).setView([0,0], 18);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+/* CAMERA */
 let followGPS = true;
-let speedBuffer = [];
-let jeepMarker = null;
-
-/* SOM REAL (TRECHO DO VÍDEO) */
-const radarAudio = new Audio(
-"data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YRAAAAD//w=="
-);
-
-let soundEnabled = false;
-
-/* CONFIG MENU */
-configBtn.onclick = () => configMenu.style.display = "block";
-function closeConfig(){ configMenu.style.display="none"; }
-
-toggleSound.onclick = () => {
-  soundEnabled = !soundEnabled;
-  toggleSound.innerText = soundEnabled ? "ATIVADO" : "DESATIVADO";
-  toggleSound.style.background = soundEnabled ? "green" : "red";
-};
-
-testBeep.onclick = () => {
-  radarAudio.currentTime = 0;
-  radarAudio.play();
-};
-
-/* CÂMERA */
 freeCam.onclick = () => {
   followGPS = !followGPS;
   freeCam.style.background = followGPS ? "red" : "green";
 };
 
-/* JEEP */
-const jeepIcon = L.divIcon({
-  html:`<div style="width:30px;height:30px;background:black;border-radius:6px"></div>`,
-  iconSize:[30,30],
-  iconAnchor:[15,15]
-});
+/* MENU */
+configBtn.onclick = () => configMenu.style.display = "block";
+backBtn.onclick = () => configMenu.style.display = "none";
+
+/* SOM REAL (FUNCIONA NO ANDROID) */
+let soundEnabled = true;
+let audioCtx = null;
+
+function playBeep(){
+  if(!soundEnabled) return;
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.frequency.value = 950;
+  gain.gain.value = 0.2;
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.18);
+}
+
+soundToggle.onclick = () => {
+  soundEnabled = !soundEnabled;
+  soundToggle.textContent = soundEnabled ? "ATIVADO" : "DESATIVADO";
+  soundToggle.className = "btn " + (soundEnabled ? "btn-green" : "btn-red");
+};
+
+testSound.onclick = () => playBeep();
 
 /* GPS */
-navigator.geolocation.watchPosition(p=>{
-  const lat=p.coords.latitude;
-  const lng=p.coords.longitude;
-  const s=p.coords.speed?p.coords.speed*3.6:0;
+navigator.geolocation.watchPosition(pos => {
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
 
-  speedBuffer.push(s);
-  if(speedBuffer.length>6) speedBuffer.shift();
-  speedBox.innerText=Math.round(speedBuffer.reduce((a,b)=>a+b)/speedBuffer.length)+" km/h";
+  speedBox.innerText = Math.round(speed) + " km/h";
 
-  if(jeepMarker) map.removeLayer(jeepMarker);
-  jeepMarker=L.marker([lat,lng],{icon:jeepIcon}).addTo(map);
+  if(followGPS) map.setView([lat,lng], map.getZoom(), { animate:false });
 
-  if(followGPS) map.setView([lat,lng],map.getZoom(),{animate:false});
-},{enableHighAccuracy:true});
+}, err => alert(err.message), { enableHighAccuracy:true });
 </script>
 
 </body>
