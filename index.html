@@ -1,318 +1,170 @@
-
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>GPS Jeep Renegade – Beta 3 Estável</title>
+<meta charset="utf-8">
+<title>GPS Beta 3</title>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body {
-  margin: 0;
-  height: 100%;
-  background: #111;
+
+html,body{
+margin:0;
+padding:0;
+height:100%;
 }
 
-#map {
-  width: 100%;
-  height: 100%;
+#map{
+width:100%;
+height:100%;
 }
 
-  /* FUMAÇA DO JEEP */
-@keyframes smoke {
-  from {
-    opacity: 0.6;
-    transform: translate(0,0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translate(-12px,12px) scale(1.7);
-  }
+.vehicle{
+width:40px;
+height:40px;
+transform-origin:center;
+transition:transform 0.4s linear;
 }
 
-.smoke {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background: rgba(200,200,200,0.6);
-  border-radius: 50%;
-  animation: smoke 1s linear infinite;
+#panel{
+position:absolute;
+bottom:10px;
+left:10px;
+background:white;
+padding:10px;
+border-radius:10px;
+font-family:Arial;
+box-shadow:0 0 10px rgba(0,0,0,0.3);
 }
 
-/* MOVIMENTO SUAVE DO VEÍCULO */
-.vehicle-icon{
-  will-change: transform;
-  transition: all 0.4s linear;
-}
-  
-/* LIMITE */
-#limitBox {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 78px;
-  height: 78px;
-  border-radius: 50%;
-  border: 6px solid red;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
-  font-weight: bold;
-  z-index: 1000;
+#menu{
+position:absolute;
+top:10px;
+right:10px;
+background:white;
+padding:10px;
+border-radius:10px;
+display:none;
+font-family:Arial;
 }
 
-/* VELOCIDADE */
-#speedBox {
-  position: absolute;
-  top: 100px;
-  left: 22px;
-  background: #111;
-  color: white;
-  padding: 8px 14px;
-  border-radius: 10px;
-  font-size: 18px;
-  z-index: 1000;
+button{
+padding:6px;
+margin-top:5px;
 }
 
-/* CAMERA */
-#freeCam {
-  position: absolute;
-  right: 16px;
-  bottom: 20px;
-  width: 56px;
-  height: 56px;
-  background: red;
-  color: white;
-  border-radius: 50%;
-  font-size: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  cursor: pointer;
+.speed{
+font-size:22px;
+font-weight:bold;
 }
 
-/* CONFIG */
-#configBtn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 44px;
-  height: 44px;
-  background: #222;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1200;
-  cursor: pointer;
+.limit{
+color:red;
 }
 
-/* MENU */
-#configMenu {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,.85);
-  z-index: 2000;
-  display: none;
-  padding: 20px;
-  color: white;
-}
-
-.configCard {
-  background: #2a2a2a;
-  border-radius: 14px;
-  padding: 18px;
-  margin-top: 18px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.btn {
-  padding: 10px 18px;
-  border-radius: 10px;
-  border: none;
-  font-size: 16px;
-  color: white;
-}
-
-.btn-green { background: green; }
-.btn-red { background: red; }
-.btn-gray { background: #555; }
-
-#backBtn {
-  width: 100%;
-  margin-top: 26px;
-  background: #444;
-}
 </style>
 </head>
 
 <body>
 
 <div id="map"></div>
-<div id="limitBox">50</div>
-<div id="speedBox">0 km/h</div>
-<div id="freeCam">📷</div>
-<div id="configBtn">⚙️</div>
 
-<!-- MENU -->
-<div id="configMenu">
-  <h1>Configurações</h1>
+<div id="panel">
+<div class="speed">Velocidade: <span id="speed">0</span> km/h</div>
+<div>Limite: <span id="limit">--</span></div>
+<button onclick="openMenu()">⚙ Config</button>
+</div>
 
-  <div class="configCard">
-    <span>Som do Radar</span>
-    <button id="soundToggle" class="btn btn-green">ATIVADO</button>
-  </div>
+<div id="menu">
 
-  <div class="configCard">
-    <span>Testar Bip</span>
-    <button id="testSound" class="btn btn-gray">TESTAR</button>
-  </div>
+Bip radar
+<input type="checkbox" id="bip" checked>
+<br>
 
-  <button id="backBtn" class="btn">Voltar</button>
+Modo câmera
+<select id="camera">
+<option value="focus">Focado</option>
+<option value="free">Livre</option>
+</select>
+
+<br>
+
+<button onclick="testBeep()">Teste bip</button>
+
+<br>
+
+<button onclick="closeMenu()">Fechar</button>
+
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
-  /* === IMAGEM JEEP BASE64 === */
-<script>
-let marker;
-let lastLat = null;
-let lastLng = null;
-let smoothLat = null;
-let smoothLng = null;
 
-function createVehicleIcon(angle = 0) {
-    return L.divIcon({
-        className: "vehicle-icon",
-        html: `
-        <div style="
-            font-size:28px;
-            transform: rotate(${angle}deg);
-            transition: transform 0.5s linear;
-        ">
-            🚙💨
-        </div>
-        `,
-        iconSize: [40,40],
-        iconAnchor: [20,20]
-    });
-}
+let map = L.map('map').setView([-22.3145,-49.058],16);
 
-function smoothMove(newLat, newLng) {
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map);
 
-    if (smoothLat === null) {
-        smoothLat = newLat;
-        smoothLng = newLng;
-    }
 
-    smoothLat += (newLat - smoothLat) * 0.15;
-    smoothLng += (newLng - smoothLng) * 0.15;
-
-    if (marker) {
-        marker.setLatLng([smoothLat, smoothLng]);
-    }
-}
-
-function updateVehicle(lat, lng) {
-
-    if (!marker) {
-        marker = L.marker([lat, lng], {
-            icon: createVehicleIcon()
-        }).addTo(map);
-        return;
-    }
-
-    smoothMove(lat, lng);
-}
-
-navigator.geolocation.watchPosition((pos)=>{
-
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-
-    updateVehicle(lat,lng);
-
-},{
-    enableHighAccuracy:true,
-    maximumAge:0,
-    timeout:5000
+let arrowIcon = L.icon({
+iconUrl:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAYAAAA8AXHiAAAACXBIWXMAAAsSAAALEgHS3X78AAABFklEQVR4nO3QsQ2AMBAF0Zb3v7L1VbRUTpuG1HsRvN7kYMva9n32dWHa3gwxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wwo1zB5p6n6WfAAAAAElFTkSuQmCC',
+iconSize:[40,40]
 });
-</script>
-  
-/* MAPA */
-const map = L.map('map', { zoomControl: false }).setView([0,0], 18);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-/* CAMERA */
-let followGPS = true;
-freeCam.onclick = () => {
-  followGPS = !followGPS;
-  freeCam.style.background = followGPS ? "red" : "green";
-};
+let marker=L.marker([-22.3145,-49.058],{icon:arrowIcon}).addTo(map);
 
-/* MENU */
-configBtn.onclick = () => configMenu.style.display = "block";
-backBtn.onclick = () => configMenu.style.display = "none";
 
-/* SOM REAL (FUNCIONA NO ANDROID) */
-let soundEnabled = true;
-let audioCtx = null;
+navigator.geolocation.watchPosition(function(pos){
 
-function playBeep(){
-  if(!soundEnabled) return;
-  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let lat=pos.coords.latitude;
+let lon=pos.coords.longitude;
 
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
+marker.setLatLng([lat,lon]);
 
-  osc.frequency.value = 950;
-  gain.gain.value = 0.2;
+let speed=pos.coords.speed;
 
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
+if(speed==null) speed=0;
 
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.18);
+speed=Math.round(speed*3.6);
+
+document.getElementById("speed").innerText=speed;
+
+if(document.getElementById("camera").value=="focus"){
+map.setView([lat,lon]);
 }
 
-soundToggle.onclick = () => {
-  soundEnabled = !soundEnabled;
-  soundToggle.textContent = soundEnabled ? "ATIVADO" : "DESATIVADO";
-  soundToggle.className = "btn " + (soundEnabled ? "btn-green" : "btn-red");
-};
+});
 
-testSound.onclick = () => playBeep();
 
-/* GPS */
-navigator.geolocation.watchPosition(pos => {
-  const lat = pos.coords.latitude;
-  const lng = pos.coords.longitude;
-  const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
+function openMenu(){
+document.getElementById("menu").style.display="block";
+}
 
-  speedBox.innerText = Math.round(speed) + " km/h";
-  
-  if (jeepMarker) {
-    jeepMarker.setLatLng([lat, lng]);
-  } else {
-    jeepMarker = L.marker([lat, lng], {
-      icon: jeepIcon,
-      interactive: false
-    }).addTo(map);
-  }
+function closeMenu(){
+document.getElementById("menu").style.display="none";
+}
 
-  if(followGPS) map.setView([lat,lng], map.getZoom(), { animate:false });
+function testBeep(){
 
-}, err => alert(err.message), { enableHighAccuracy:true });
+let ctx=new AudioContext();
+
+let osc=ctx.createOscillator();
+
+osc.connect(ctx.destination);
+
+osc.start();
+
+setTimeout(()=>{
+osc.stop();
+},200);
+
+}
+
 </script>
 
 </body>
 </html>
-
