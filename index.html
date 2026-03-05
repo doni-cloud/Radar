@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -12,6 +13,7 @@
 body{
 margin:0;
 font-family:Arial;
+background:black;
 }
 
 #map{
@@ -19,17 +21,18 @@ height:100vh;
 width:100%;
 }
 
-/* velocidade */
+/* velocimetro */
 
 #speedBox{
 position:absolute;
-bottom:20px;
-left:20px;
+top:15px;
+left:50%;
+transform:translateX(-50%);
 background:#111;
 color:white;
-padding:10px 14px;
+padding:10px 20px;
 border-radius:10px;
-font-size:22px;
+font-size:26px;
 z-index:1000;
 }
 
@@ -37,95 +40,111 @@ z-index:1000;
 
 #limitBox{
 position:absolute;
-bottom:20px;
-left:110px;
-background:#fff;
-border:3px solid red;
+top:70px;
+left:50%;
+transform:translateX(-50%);
+background:white;
+border:4px solid red;
 color:black;
-padding:8px;
+padding:10px;
 border-radius:50%;
 font-weight:bold;
+font-size:20px;
 z-index:1000;
 }
 
-/* botão config */
-
-#configBtn{
-position:absolute;
-top:20px;
-right:20px;
-background:#111;
-color:white;
-border:none;
-padding:10px 12px;
-border-radius:8px;
-z-index:1000;
-}
-
-/* menu */
-
-#menu{
-position:absolute;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,0.7);
-display:none;
-z-index:2000;
-color:white;
-padding:30px;
-}
-
-.menuButton{
-padding:10px;
-margin-top:10px;
-border-radius:8px;
-border:none;
-font-size:16px;
-}
-
-.green{
-background:green;
-color:white;
-}
-
-.red{
-background:red;
-color:white;
-}
-
-/* radar */
+/* radar aviso */
 
 #radarAlert{
+
 position:absolute;
-top:150px;
-left:20px;
+top:130px;
+left:50%;
+transform:translateX(-50%);
+
 background:#111;
 color:white;
-padding:14px 18px;
-border-radius:14px;
+
+padding:14px 20px;
+
+border-radius:12px;
+
 border-left:6px solid red;
+
+text-align:center;
+
 z-index:1000;
-display:none;
-}
 
-.radarTitle{
-font-size:14px;
-opacity:0.8;
-}
-
-.radarText{
-font-size:20px;
-font-weight:bold;
-margin-top:4px;
 }
 
 #radarDistance{
-font-size:26px;
-font-weight:bold;
+
+  /* botão config */
+
+#configBtn{
+
+position:absolute;
+bottom:20px;
+right:20px;
+
+background:#111;
+color:white;
+
+padding:12px 16px;
+
+border-radius:10px;
+
+font-size:18px;
+
+z-index:1000;
+
+}
+
+/* menu config */
+
+#configMenu{
+
+position:absolute;
+top:0;
+left:0;
+
+width:100%;
+height:100%;
+
+background:black;
+color:white;
+
+display:none;
+
+z-index:2000;
+
+padding:30px;
+
+}
+
+/* botão voltar */
+
+#backBtn{
+
+position:absolute;
+top:20px;
+left:20px;
+
+background:#222;
+color:white;
+
+padding:10px 16px;
+
+border-radius:8px;
+
+font-size:16px;
+
+}
 margin-top:6px;
+font-size:22px;
+font-weight:bold;
 color:#ff4444;
+
 }
 
 </style>
@@ -137,31 +156,16 @@ color:#ff4444;
 <div id="map"></div>
 
 <div id="speedBox">0 km/h</div>
+
 <div id="limitBox">60</div>
 
-<button id="configBtn">⚙</button>
-
 <div id="radarAlert">
-<div class="radarTitle">📡 RADAR</div>
-<div class="radarText">⚠ RADAR A FRENTE</div>
-<div id="radarDistance">500 m</div>
-</div>
 
-<div id="menu">
+<div>📡 RADAR</div>
 
-<h2>Configurações</h2>
+<div>⚠ RADAR A FRENTE</div>
 
-<button id="soundToggle" class="menuButton green">
-Som Ativado
-</button>
-
-<button id="testSound" class="menuButton">
-Teste Bip
-</button>
-
-<button id="cameraMode" class="menuButton green">
-Câmera Focada
-</button>
+<div id="radarDistance">Esperando detecção</div>
 
 </div>
 
@@ -175,47 +179,24 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 maxZoom:19
 }).addTo(map);
 
+/* jeep icon */
+
 let jeepIcon = L.divIcon({
+
 html:"🚙",
+
 iconSize:[30,30]
+
 });
 
 let jeepMarker = null;
 
-let lastLat = null;
-let lastLng = null;
+/* radar exemplo */
 
-let soundOn = true;
-let cameraFocus = true;
+let radarLat = -22.3150;
+let radarLng = -49.0610;
 
-let radarLat = -22.3145;
-let radarLng = -49.0615;
-
-let lastBeep500=false;
-let lastBeep250=false;
-let lastBeep80=false;
-
-let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-function beep(freq,duration){
-
-if(!soundOn) return;
-
-let osc = audioCtx.createOscillator();
-let gain = audioCtx.createGain();
-
-osc.connect(gain);
-gain.connect(audioCtx.destination);
-
-osc.frequency.value = freq;
-
-osc.start();
-
-setTimeout(()=>{
-osc.stop();
-},duration);
-
-}
+/* distância */
 
 function getDistance(lat1,lon1,lat2,lon2){
 
@@ -236,6 +217,8 @@ return R*c;
 
 }
 
+/* movimento suave */
+
 function smoothMove(lat,lng){
 
 if(!jeepMarker){
@@ -247,7 +230,7 @@ return;
 
 let start=jeepMarker.getLatLng();
 
-let steps=20;
+let steps=10;
 let i=0;
 
 let move=setInterval(()=>{
@@ -265,6 +248,8 @@ if(i>=steps) clearInterval(move);
 
 }
 
+/* gps */
+
 navigator.geolocation.watchPosition(pos=>{
 
 let lat=pos.coords.latitude;
@@ -280,93 +265,23 @@ document.getElementById("speedBox").innerText=speed+" km/h";
 
 smoothMove(lat,lng);
 
-if(cameraFocus){
 map.setView([lat,lng]);
-}
 
 let dist=getDistance(lat,lng,radarLat,radarLng);
 
-let radarBox=document.getElementById("radarAlert");
-let radarDist=document.getElementById("radarDistance");
+let radarText=document.getElementById("radarDistance");
 
 if(dist<=500){
 
-radarBox.style.display="block";
-
-radarDist.innerText=Math.round(dist)+" m";
-
-if(dist<500 && !lastBeep500){
-
-beep(900,120);
-
-lastBeep500=true;
-
-}
-
-if(dist<250 && !lastBeep250){
-
-beep(1200,120);
-
-lastBeep250=true;
-
-}
-
-if(dist<80 && !lastBeep80){
-
-beep(2000,300);
-
-lastBeep80=true;
-
-}
+radarText.innerText=Math.round(dist)+" m";
 
 }else{
 
-radarBox.style.display="none";
-
-lastBeep500=false;
-lastBeep250=false;
-lastBeep80=false;
+radarText.innerText="Esperando detecção";
 
 }
 
-lastLat=lat;
-lastLng=lng;
-
 });
-
-document.getElementById("configBtn").onclick=()=>{
-
-let menu=document.getElementById("menu");
-
-menu.style.display=menu.style.display=="block"?"none":"block";
-
-};
-
-document.getElementById("soundToggle").onclick=function(){
-
-soundOn=!soundOn;
-
-this.innerText=soundOn?"Som Ativado":"Som Desativado";
-
-this.className="menuButton "+(soundOn?"green":"red");
-
-};
-
-document.getElementById("testSound").onclick=()=>{
-
-beep(1200,200);
-
-};
-
-document.getElementById("cameraMode").onclick=function(){
-
-cameraFocus=!cameraFocus;
-
-this.innerText=cameraFocus?"Câmera Focada":"Câmera Livre";
-
-this.className="menuButton "+(cameraFocus?"green":"red");
-
-};
 
 </script>
 
