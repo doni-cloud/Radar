@@ -1,69 +1,157 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<title>GPS Beta 3</title>
-
+<meta charset="UTF-8">
+<title>GPS Jeep Renegade – Beta Estável</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-
-html,body{
-margin:0;
-padding:0;
-height:100%;
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #111;
 }
 
-#map{
-width:100%;
-height:100%;
+#map {
+  width: 100%;
+  height: 100%;
 }
 
-.vehicle{
-width:40px;
-height:40px;
-transform-origin:center;
-transition:transform 0.4s linear;
+/* LIMITE */
+#limitBox {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 6px solid red;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: bold;
+  z-index: 1000;
 }
 
-#panel{
-position:absolute;
-bottom:10px;
-left:10px;
-background:white;
-padding:10px;
-border-radius:10px;
-font-family:Arial;
-box-shadow:0 0 10px rgba(0,0,0,0.3);
+/* VELOCIDADE */
+#speedBox {
+  position: absolute;
+  top: 100px;
+  left: 22px;
+  background: #111;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 18px;
+  z-index: 1000;
 }
 
+/* BOTÃO CAMERA */
+#freeCam {
+  position: absolute;
+  right: 16px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  background: red;
+  color: white;
+  border-radius: 50%;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+/* BOTÃO CONFIG */
+#configBtn{
+  position:absolute;
+  right:16px;
+  top:16px;
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  background:#111;
+  color:white;
+  font-size:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+  cursor:pointer;
+}
+
+/* MENU */
 #menu{
-position:absolute;
-top:10px;
-right:10px;
-background:white;
-padding:10px;
-border-radius:10px;
-display:none;
-font-family:Arial;
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.85);
+  backdrop-filter: blur(6px);
+  z-index:2000;
+  display:none;
 }
 
-button{
-padding:6px;
-margin-top:5px;
+#menuBox{
+  width:90%;
+  max-width:420px;
+  margin:120px auto;
+  background:#222;
+  border-radius:16px;
+  padding:20px;
 }
 
-.speed{
-font-size:22px;
-font-weight:bold;
+.menuItem{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:#2e2e2e;
+  padding:16px;
+  border-radius:12px;
+  margin-bottom:16px;
+  color:white;
 }
 
-.limit{
-color:red;
+.menuBtn{
+  padding:8px 16px;
+  border-radius:10px;
+  border:none;
+  font-weight:bold;
 }
 
+.on{background:green;color:white;}
+.off{background:#444;color:white;}
+
+#backBtn{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  background:#444;
+  color:white;
+  font-size:16px;
+}
+
+/* FUMAÇA */
+@keyframes smoke {
+  from { opacity: 0.6; transform: translate(0,0) scale(1); }
+  to   { opacity: 0; transform: translate(-12px,12px) scale(1.7); }
+}
+.smoke {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgba(200,200,200,0.6);
+  border-radius: 50%;
+  animation: smoke 1s linear infinite;
+}
 </style>
 </head>
 
@@ -71,98 +159,156 @@ color:red;
 
 <div id="map"></div>
 
-<div id="panel">
-<div class="speed">Velocidade: <span id="speed">0</span> km/h</div>
-<div>Limite: <span id="limit">--</span></div>
-<button onclick="openMenu()">⚙ Config</button>
-</div>
+<div id="limitBox">50</div>
+<div id="speedBox">0 km/h</div>
+
+<div id="freeCam">📷</div>
+<div id="configBtn">⚙</div>
 
 <div id="menu">
+  <div id="menuBox">
 
-Bip radar
-<input type="checkbox" id="bip" checked>
-<br>
+    <div class="menuItem">
+      <span>Som do Radar</span>
+      <button id="soundToggle" class="menuBtn on">ATIVADO</button>
+    </div>
 
-Modo câmera
-<select id="camera">
-<option value="focus">Focado</option>
-<option value="free">Livre</option>
-</select>
+    <div class="menuItem">
+      <span>Testar Bip</span>
+      <button id="testBip" class="menuBtn off">TESTAR</button>
+    </div>
 
-<br>
+    <button id="backBtn">Voltar</button>
 
-<button onclick="testBeep()">Teste bip</button>
-
-<br>
-
-<button onclick="closeMenu()">Fechar</button>
-
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 
-let map = L.map('map').setView([-22.3145,-49.058],16);
+/* MAPA */
+const map = L.map('map', { zoomControl:false }).setView([0,0],18);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
+  maxZoom:19
 }).addTo(map);
 
+/* CONFIG */
+let followGPS = true;
+let speedLimit = 50;
+let speedBuffer = [];
+let jeepMarker = null;
+let radarSound = true;
 
-let arrowIcon = L.icon({
-iconUrl:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAYAAAA8AXHiAAAACXBIWXMAAAsSAAALEgHS3X78AAABFklEQVR4nO3QsQ2AMBAF0Zb3v7L1VbRUTpuG1HsRvN7kYMva9n32dWHa3gwxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wxxhhjDDGGGOMMcYYY4wwo1zB5p6n6WfAAAAAElFTkSuQmCC',
-iconSize:[40,40]
+/* SOM */
+const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+
+/* ICON JEEP */
+const jeepIcon = L.divIcon({
+className:'',
+html:`
+<div style="position:relative;width:48px;height:70px;">
+<svg width="48" height="70" viewBox="0 0 48 70">
+<ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
+<rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
+<rect x="12" y="4" width="24" height="12" rx="6" fill="#111"/>
+<rect x="15" y="8" width="18" height="8" rx="3" fill="#1c1c1c"/>
+<circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
+<circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
+</svg>
+<div class="smoke" style="left:10px;bottom:4px"></div>
+<div class="smoke" style="right:10px;bottom:4px;animation-delay:.3s"></div>
+</div>
+`,
+iconSize:[48,70],
+iconAnchor:[24,35]
 });
 
-let marker=L.marker([-22.3145,-49.058],{icon:arrowIcon}).addTo(map);
-
-
-navigator.geolocation.watchPosition(function(pos){
-
-let lat=pos.coords.latitude;
-let lon=pos.coords.longitude;
-
-marker.setLatLng([lat,lon]);
-
-let speed=pos.coords.speed;
-
-if(speed==null) speed=0;
-
-speed=Math.round(speed*3.6);
-
-document.getElementById("speed").innerText=speed;
-
-if(document.getElementById("camera").value=="focus"){
-map.setView([lat,lon]);
+/* CAMERA */
+freeCam.onclick=()=>{
+followGPS=!followGPS
+freeCam.style.background=followGPS?"red":"green"
 }
 
-});
-
-
-function openMenu(){
-document.getElementById("menu").style.display="block";
+/* MENU */
+configBtn.onclick=()=>{
+menu.style.display="block"
 }
 
-function closeMenu(){
-document.getElementById("menu").style.display="none";
+backBtn.onclick=()=>{
+menu.style.display="none"
 }
 
-function testBeep(){
+/* SOM TOGGLE */
 
-let ctx=new AudioContext();
+soundToggle.onclick=()=>{
+radarSound=!radarSound
 
-let osc=ctx.createOscillator();
+if(radarSound){
+soundToggle.innerText="ATIVADO"
+soundToggle.className="menuBtn on"
+}else{
+soundToggle.innerText="DESATIVADO"
+soundToggle.className="menuBtn off"
+}
+}
 
-osc.connect(ctx.destination);
+/* TESTE BIP */
 
-osc.start();
+testBip.onclick=()=>{
+beep.play()
+}
 
-setTimeout(()=>{
-osc.stop();
-},200);
+/* GPS */
+
+navigator.geolocation.watchPosition(pos=>{
+
+const lat=pos.coords.latitude
+const lng=pos.coords.longitude
+
+const rawSpeed=pos.coords.speed?pos.coords.speed*3.6:0
+
+speedBuffer.push(rawSpeed)
+if(speedBuffer.length>5)speedBuffer.shift()
+
+const speed=speedBuffer.reduce((a,b)=>a+b,0)/speedBuffer.length
+
+speedBox.innerText=Math.round(speed)+" km/h"
+
+limitBox.style.background=speed>speedLimit?"red":"white"
+limitBox.style.color=speed>speedLimit?"white":"black"
+
+/* MOVIMENTO SUAVE */
+
+if(jeepMarker){
+
+const old=jeepMarker.getLatLng()
+
+const newLat=old.lat+(lat-old.lat)*0.35
+const newLng=old.lng+(lng-old.lng)*0.35
+
+jeepMarker.setLatLng([newLat,newLng])
+
+}else{
+
+jeepMarker=L.marker([lat,lng],{
+icon:jeepIcon,
+interactive:false
+}).addTo(map)
 
 }
+
+/* CAMERA */
+
+if(followGPS){
+map.setView([lat,lng],map.getZoom(),{animate:false})
+}
+
+},err=>alert("Erro GPS: "+err.message),{
+enableHighAccuracy:true,
+timeout:10000
+})
 
 </script>
 
