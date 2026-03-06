@@ -1,154 +1,148 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
+<meta charset="UTF-8">
+<title>GPS Jeep Renegade – Beta Estável</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
 
-body{
-margin:0;
-font-family:Arial;
-background:black;
+html, body {
+  margin:0;
+  height:100%;
+  background:#111;
 }
 
 #map{
-height:100vh;
-width:100%;
+  width:100%;
+  height:100%;
 }
 
-/* velocimetro */
-
+/* VELOCIDADE */
 #speedBox{
 position:absolute;
-top:15px;
-left:50%;
-transform:translateX(-50%);
-background:#111;
+top:18px;
+left:18px;
+background:black;
 color:white;
-padding:10px 20px;
-border-radius:10px;
-font-size:26px;
+padding:14px 24px;
+border-radius:16px;
+font-size:28px;
 z-index:1000;
 }
 
-/* limite via */
+/* LIMITE DA VIA */
 
 #limitBox{
 position:absolute;
-top:70px;
-left:50%;
-transform:translateX(-50%);
-background:white;
-border:4px solid red;
-color:black;
-padding:10px;
+top:18px;
+left:180px;
+width:70px;
+height:70px;
 border-radius:50%;
+border:6px solid red;
+background:white;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:26px;
 font-weight:bold;
-font-size:20px;
 z-index:1000;
 }
 
-/* radar aviso */
+/* BOTÃO CÂMERA */
+
+#freeCam{
+position:absolute;
+right:18px;
+bottom:22px;
+width:60px;
+height:60px;
+border-radius:50%;
+background:red;
+color:white;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:28px;
+z-index:1000;
+}
+
+/* ALERTA RADAR */
 
 #radarAlert{
 
 position:absolute;
-top:130px;
+top:110px;
 left:50%;
 transform:translateX(-50%);
+width:280px;
 
-background:#111;
-color:white;
-
-padding:14px 20px;
-
-border-radius:12px;
-
-border-left:6px solid red;
+background:#1b1b1b;
+border:5px solid #ffc400;
+border-radius:18px;
 
 text-align:center;
 
-z-index:1000;
-
-}
-
-#radarDistance{
-
-  /* botão config */
-
-#configBtn{
-
-position:absolute;
-bottom:20px;
-right:20px;
-
-background:#111;
-color:white;
-
-padding:12px 16px;
-
-border-radius:10px;
-
-font-size:18px;
-
-z-index:1000;
-
-}
-
-/* menu config */
-
-#configMenu{
-
-position:absolute;
-top:0;
-left:0;
-
-width:100%;
-height:100%;
-
-background:black;
-color:white;
+padding:18px;
 
 display:none;
 
-z-index:2000;
-
-padding:30px;
+z-index:1000;
 
 }
 
-/* botão voltar */
+.radarTitle{
 
-#backBtn{
-
-position:absolute;
-top:20px;
-left:20px;
-
-background:#222;
 color:white;
-
-padding:10px 16px;
-
-border-radius:8px;
-
-font-size:16px;
+font-size:20px;
+font-weight:bold;
 
 }
-margin-top:6px;
+
+.radarLine{
+
+height:3px;
+background:#ffc400;
+margin:10px 0;
+
+}
+
+.radarSub{
+
+color:white;
 font-size:22px;
 font-weight:bold;
-color:#ff4444;
 
+}
+
+.radarDistance{
+
+color:white;
+font-size:42px;
+font-weight:bold;
+
+}
+
+/* FUMAÇA JEEP */
+
+@keyframes smoke {
+from {opacity:0.6; transform:translate(0,0) scale(1);}
+to {opacity:0; transform:translate(-12px,12px) scale(1.7);}
+}
+
+.smoke{
+position:absolute;
+width:10px;
+height:10px;
+background:rgba(200,200,200,0.6);
+border-radius:50%;
+animation:smoke 1s linear infinite;
 }
 
 </style>
-
 </head>
 
 <body>
@@ -156,132 +150,192 @@ color:#ff4444;
 <div id="map"></div>
 
 <div id="speedBox">0 km/h</div>
-
 <div id="limitBox">60</div>
+
+<div id="freeCam">📷</div>
+
+<!-- ALERTA RADAR -->
 
 <div id="radarAlert">
 
-<div>📡 RADAR</div>
+<div class="radarTitle">RADAR DETECTADO</div>
 
-<div>⚠ RADAR A FRENTE</div>
+<div class="radarLine"></div>
 
-<div id="radarDistance">Esperando detecção</div>
+<div class="radarSub">RADAR À FRENTE</div>
+
+<div class="radarLine"></div>
+
+<div class="radarDistance" id="radarDistance">
+Esperando detecção
+</div>
 
 </div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 
-let map = L.map('map').setView([-22.3145,-49.0602],17);
+/* MAPA */
+
+const map = L.map('map',{zoomControl:false}).setView([0,0],18)
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 maxZoom:19
-}).addTo(map);
+}).addTo(map)
 
-/* jeep icon */
 
-let jeepIcon = L.divIcon({
+/* CONFIG */
 
-html:"🚙",
+let followGPS = true
+let speedLimit = 60
+let speedBuffer = []
+let jeepMarker = null
 
-iconSize:[30,30]
 
-});
+/* JEEP */
 
-let jeepMarker = null;
+const jeepIcon = L.divIcon({
 
-/* radar exemplo */
+className:'',
+html:`
 
-let radarLat = -22.3150;
-let radarLng = -49.0610;
+<div style="position:relative;width:48px;height:70px;">
 
-/* distância */
+<svg width="48" height="70" viewBox="0 0 48 70">
 
-function getDistance(lat1,lon1,lat2,lon2){
+<ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
 
-const R=6371000;
+<rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
 
-const dLat=(lat2-lat1)*Math.PI/180;
-const dLon=(lon2-lon1)*Math.PI/180;
+<rect x="12" y="4" width="24" height="12" rx="6" fill="#111"/>
 
-const a=
-Math.sin(dLat/2)*Math.sin(dLat/2)+
-Math.cos(lat1*Math.PI/180)*
-Math.cos(lat2*Math.PI/180)*
-Math.sin(dLon/2)*Math.sin(dLon/2);
+<rect x="15" y="8" width="18" height="8" rx="3" fill="#1c1c1c"/>
 
-const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+<circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
 
-return R*c;
+<circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
 
-}
+<rect x="18" y="50" width="12" height="5" rx="1.5" fill="#ccc"/>
 
-/* movimento suave */
+</svg>
 
-function smoothMove(lat,lng){
+<div class="smoke" style="left:10px;bottom:4px"></div>
+<div class="smoke" style="right:10px;bottom:4px;animation-delay:.3s"></div>
 
-if(!jeepMarker){
+</div>
 
-jeepMarker=L.marker([lat,lng],{icon:jeepIcon}).addTo(map);
-return;
+`,
+iconSize:[48,70],
+iconAnchor:[24,35]
 
-}
+})
 
-let start=jeepMarker.getLatLng();
 
-let steps=10;
-let i=0;
+/* BOTÃO CAMERA */
 
-let move=setInterval(()=>{
+document.getElementById("freeCam").onclick=()=>{
 
-i++;
-
-let newLat=start.lat+(lat-start.lat)*(i/steps);
-let newLng=start.lng+(lng-start.lng)*(i/steps);
-
-jeepMarker.setLatLng([newLat,newLng]);
-
-if(i>=steps) clearInterval(move);
-
-},50);
+followGPS=!followGPS
+freeCam.style.background = followGPS ? "red" : "green"
 
 }
 
-/* gps */
+
+/* SOM RADAR */
+
+function bipRadar(){
+
+let ctx = new (window.AudioContext || window.webkitAudioContext)()
+
+let osc = ctx.createOscillator()
+
+let gain = ctx.createGain()
+
+osc.frequency.value = 900
+
+gain.gain.value = 0.2
+
+osc.connect(gain)
+gain.connect(ctx.destination)
+
+osc.start()
+osc.stop(ctx.currentTime+0.15)
+
+}
+
+
+/* MOSTRAR RADAR */
+
+function mostrarRadar(dist){
+
+document.getElementById("radarAlert").style.display="block"
+
+document.getElementById("radarDistance").innerText = dist + " m"
+
+bipRadar()
+
+}
+
+
+/* GPS */
 
 navigator.geolocation.watchPosition(pos=>{
 
-let lat=pos.coords.latitude;
-let lng=pos.coords.longitude;
+const lat = pos.coords.latitude
+const lng = pos.coords.longitude
+const rawSpeed = pos.coords.speed ? pos.coords.speed*3.6 : 0
 
-let speed=pos.coords.speed;
+speedBuffer.push(rawSpeed)
+if(speedBuffer.length>6) speedBuffer.shift()
 
-if(speed==null) speed=0;
+const speed = speedBuffer.reduce((a,b)=>a+b,0)/speedBuffer.length
 
-speed=Math.round(speed*3.6);
+speedBox.innerText = Math.round(speed)+" km/h"
 
-document.getElementById("speedBox").innerText=speed+" km/h";
+if(speed>speedLimit){
 
-smoothMove(lat,lng);
-
-map.setView([lat,lng]);
-
-let dist=getDistance(lat,lng,radarLat,radarLng);
-
-let radarText=document.getElementById("radarDistance");
-
-if(dist<=500){
-
-radarText.innerText=Math.round(dist)+" m";
+limitBox.style.background="red"
+limitBox.style.color="white"
 
 }else{
 
-radarText.innerText="Esperando detecção";
+limitBox.style.background="white"
+limitBox.style.color="black"
 
 }
 
-});
+/* jeep */
+
+if(jeepMarker) map.removeLayer(jeepMarker)
+
+jeepMarker = L.marker([lat,lng],{
+
+icon:jeepIcon,
+interactive:false
+
+}).addTo(map)
+
+if(followGPS){
+
+map.setView([lat,lng],map.getZoom(),{animate:false})
+
+}
+
+},err=>alert(err.message),{
+
+enableHighAccuracy:true
+
+})
+
+
+/* TESTE RADAR */
+
+setTimeout(()=>{
+
+mostrarRadar(500)
+
+},4000)
 
 </script>
 
