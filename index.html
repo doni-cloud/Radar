@@ -88,7 +88,7 @@ right:20px;
 width:60px;
 height:60px;
 border-radius:50%;
-background:red;
+background:black;
 display:flex;
 align-items:center;
 justify-content:center;
@@ -96,6 +96,7 @@ font-size:28px;
 color:white;
 cursor:pointer;
 z-index:1000;
+box-shadow:0 3px 8px rgba(0,0,0,0.5);
 }
 
 /* MENU */
@@ -214,11 +215,10 @@ maxZoom:19
 /* ICONE CARRO */
 
 var carIcon = L.icon({
-iconUrl:'https://cdn-icons-png.flaticon.com/512/743/743922.png',
-iconSize:[40,40],
-iconAnchor:[20,20]
+iconUrl:'https://i.imgur.com/7Q9QZ6R.png',
+iconSize:[48,48],
+iconAnchor:[24,24]
 });
-
 var marker = L.marker([-22.3145,-49.0604],{icon:carIcon}).addTo(map);
 
 
