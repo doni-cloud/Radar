@@ -61,7 +61,7 @@ top:12px;
 right:12px;
 width:200px;
 background:#1b1b1b;
-border:4px solid #ffc400;
+border:4px solid #2ecc71;
 border-radius:14px;
 color:white;
 text-align:center;
@@ -146,36 +146,18 @@ cursor:pointer;
 
 <div id="map"></div>
 
-<!-- VELOCIDADE -->
+<div id="speedBox">0 km/h</div>
 
-<div id="speedBox">
-0 km/h
-</div>
-
-<!-- LIMITE VIA -->
-
-<div id="limitBox">
-60
-</div>
-
-<!-- ALERTA RADAR -->
+<div id="limitBox">60</div>
 
 <div id="radarAlert">
-
-<h3>📡 RADAR DETECTADO</h3>
+<h3 id="radarTitle">SEM RADAR</h3>
 <hr>
-<h3>⚠ RADAR À FRENTE</h3>
-<h2 id="radarDist">500 m</h2>
-
+<h3 id="radarText">RADAR À FRENTE</h3>
+<h2 id="radarDist">LIVRE</h2>
 </div>
 
-<!-- BOTÃO CONFIG -->
-
-<div id="configBtn">
-⚙
-</div>
-
-<!-- MENU -->
+<div id="configBtn">⚙</div>
 
 <div id="menu">
 
@@ -212,30 +194,38 @@ maxZoom:19
 }).addTo(map);
 
 
-/* ICONE CARRO */
+/* JEEP BETA 3 */
+
 const jeepIcon = L.divIcon({
-  className: '',
-  html: `
-  <div style="position:relative;width:48px;height:70px;">
-    <svg width="48" height="70" viewBox="0 0 48 70">
-      <ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
-      <rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
-      <rect x="12" y="4" width="24" height="12" rx="6" fill="#111"/>
-      <rect x="15" y="8" width="18" height="8" rx="3" fill="#1c1c1c"/>
-      <circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
-      <circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
-      <rect x="18" y="50" width="12" height="5" rx="1.5" fill="#ccc"/>
-      <rect x="10" y="18" width="2" height="26" fill="rgba(255,255,255,0.12)"/>
-      <rect x="36" y="18" width="2" height="26" fill="rgba(0,0,0,0.5)"/>
-    </svg>
-    <div class="smoke" style="left:10px;bottom:4px"></div>
-    <div class="smoke" style="right:10px;bottom:4px;animation-delay:.3s"></div>
-  </div>
-  `,
-  iconSize: [48,70],
-  iconAnchor: [24,35]
+className:'',
+html:`
+<div style="position:relative;width:48px;height:70px;">
+<svg width="48" height="70" viewBox="0 0 48 70">
+
+<ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
+
+<rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
+<rect x="12" y="4" width="24" height="12" rx="6" fill="#111"/>
+
+<rect x="15" y="8" width="18" height="8" rx="3" fill="#1c1c1c"/>
+
+<circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
+<circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
+
+<rect x="18" y="50" width="12" height="5" rx="1.5" fill="#ccc"/>
+
+</svg>
+</div>
+`,
+iconSize:[48,70],
+iconAnchor:[24,35]
 });
-var marker = L.marker([-22.3145,-49.0604],{icon:carIcon}).addTo(map);
+
+/* MARKER (isso estava faltando no seu código) */
+
+var marker = L.marker([-22.3145,-49.0604],{
+icon:jeepIcon
+}).addTo(map);
 
 
 /* GPS */
@@ -255,16 +245,37 @@ var kmh = (speed*3.6).toFixed(0);
 document.getElementById("speedBox").innerText = kmh+" km/h";
 }
 
+if(center){
 map.panTo([lat,lon]);
+}
 
 });
 
 }
 
 
+/* RADAR STATUS */
+
+function radarLivre(){
+
+document.getElementById("radarAlert").style.borderColor="#2ecc71";
+document.getElementById("radarTitle").innerText="SEM RADAR";
+document.getElementById("radarDist").innerText="LIVRE";
+
+}
+
+function radar500(){
+
+document.getElementById("radarAlert").style.borderColor="#ff8c00";
+document.getElementById("radarTitle").innerText="RADAR DETECTADO";
+document.getElementById("radarDist").innerText="500 m";
+
+}
+
+
 /* MENU CONFIG */
 
-var menu = document.getElementById("menu");
+var menu=document.getElementById("menu");
 
 document.getElementById("configBtn").onclick=function(){
 menu.style.display="block";
