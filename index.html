@@ -156,8 +156,14 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 maxZoom:19
 }).addTo(map);
 
+/* CORRIGE BUG COMUM DO LEAFLET */
 
-/* ICON CARRO */
+setTimeout(function(){
+map.invalidateSize();
+},500);
+
+
+/* ICON CARRO (SEU JEEP NÃO FOI ALTERADO) */
 
 const jeepIcon = L.divIcon({
 className:'',
@@ -182,6 +188,10 @@ icon:jeepIcon
 
 /* GPS */
 
+function gpsError(err){
+console.log("Erro GPS:",err);
+}
+
 if(navigator.geolocation){
 
 navigator.geolocation.watchPosition(function(pos){
@@ -199,34 +209,36 @@ marker.setLatLng([lat,lon]);
 var kmh = Math.round(speed*3.6);
 document.getElementById("speedBox").innerText = kmh+" km/h";
 
-/* MAPA SEMPRE SEGUIR */
+/* MAPA SEGUIR SUAVE */
 
-map.setView([lat,lon],17);
+map.panTo([lat,lon]);
 
-},{
+},
+gpsError,
+{
 enableHighAccuracy:true,
 maximumAge:0,
-timeout:4000
+timeout:5000
 });
 
 }
 
 
-/* ESPERAR DOM */
+/* MENU */
 
-window.onload=function(){
+document.addEventListener("DOMContentLoaded",function(){
 
 var menu=document.getElementById("menu");
 
-document.getElementById("configBtn").onclick=function(){
+document.getElementById("configBtn").addEventListener("click",function(){
 menu.style.display="block";
-}
+});
 
-document.getElementById("backBtn").onclick=function(){
+document.getElementById("backBtn").addEventListener("click",function(){
 menu.style.display="none";
-}
+});
 
-}
+});
 
 </script>
 
