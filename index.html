@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -194,7 +195,7 @@ maxZoom:19
 }).addTo(map);
 
 
-/* JEEP BETA 3 */
+/* JEEP ICON */
 
 const jeepIcon = L.divIcon({
 className:'',
@@ -221,11 +222,17 @@ iconSize:[48,70],
 iconAnchor:[24,35]
 });
 
-/* MARKER (isso estava faltando no seu código) */
+
+/* MARKER */
 
 var marker = L.marker([-22.3145,-49.0604],{
 icon:jeepIcon
 }).addTo(map);
+
+
+/* CONTROLE CENTRALIZAÇÃO */
+
+var center=false;
 
 
 /* GPS */
@@ -236,19 +243,32 @@ navigator.geolocation.watchPosition(function(pos){
 
 var lat = pos.coords.latitude;
 var lon = pos.coords.longitude;
-var speed = pos.coords.speed;
+var speed = pos.coords.speed || 0;
 
 marker.setLatLng([lat,lon]);
 
-if(speed){
+/* VELOCIDADE */
+
 var kmh = (speed*3.6).toFixed(0);
 document.getElementById("speedBox").innerText = kmh+" km/h";
-}
+
+/* CENTRALIZAR MAPA */
 
 if(center){
-map.panTo([lat,lon]);
+
+var offsetLat = lat + 0.0007;
+
+map.flyTo([offsetLat,lon],17,{
+animate:true,
+duration:0.5
+});
+
 }
 
+},{
+enableHighAccuracy:true,
+maximumAge:0,
+timeout:5000
 });
 
 }
@@ -273,7 +293,7 @@ document.getElementById("radarDist").innerText="500 m";
 }
 
 
-/* MENU CONFIG */
+/* MENU */
 
 var menu=document.getElementById("menu");
 
@@ -305,9 +325,7 @@ this.innerText="Som Radar: DESATIVADO";
 }
 
 
-/* CENTRALIZA MAPA */
-
-var center=false;
+/* CENTRALIZAR */
 
 document.getElementById("centerBtn").onclick=function(){
 
