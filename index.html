@@ -20,6 +20,8 @@ height:100%;
 width:100%;
 }
 
+/* HUD */
+
 #speedBox{
 position:absolute;
 top:12px;
@@ -63,6 +65,8 @@ padding:10px;
 z-index:1000;
 }
 
+/* BOTÃO CONFIG */
+
 #configBtn{
 position:absolute;
 bottom:20px;
@@ -80,35 +84,52 @@ cursor:pointer;
 z-index:1000;
 }
 
+/* MENU NOVO */
+
 #menu{
 position:absolute;
 top:0;
 left:0;
 width:100%;
 height:100%;
-background:#111;
-color:white;
+background:#0e0e0e;
 display:none;
 z-index:2000;
 padding:30px;
+color:white;
 }
 
-.menuItem{
-padding:14px;
-margin:12px 0;
-border-radius:10px;
-font-size:20px;
+.menuGrid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:18px;
+margin-top:30px;
+}
+
+.menuBox{
+
+background:#1b1b1b;
+border-radius:16px;
+padding:25px;
+text-align:center;
+font-size:18px;
 cursor:pointer;
+
 }
 
-.active{background:green;}
-.off{background:red;}
+.menuBox.active{
+background:#2ecc71;
+}
+
+.menuBox.off{
+background:#c0392b;
+}
 
 #backBtn{
-margin-top:30px;
+margin-top:40px;
 background:#444;
-padding:14px;
-border-radius:10px;
+padding:16px;
+border-radius:12px;
 text-align:center;
 cursor:pointer;
 }
@@ -132,15 +153,35 @@ cursor:pointer;
 
 <div id="configBtn">⚙</div>
 
+<!-- MENU -->
+
 <div id="menu">
 
 <h2>Configurações</h2>
 
-<div id="soundBtn" class="menuItem active">
-Som Radar: ATIVO
+<div class="menuGrid">
+
+<div id="centerBtn" class="menuBox">
+Mapa Livre
 </div>
 
-<div id="backBtn">Voltar</div>
+<div id="soundBtn" class="menuBox active">
+Som Radar
+</div>
+
+<div id="testBtn" class="menuBox">
+Testar Bip
+</div>
+
+<div id="themeBtn" class="menuBox">
+Tema Escuro
+</div>
+
+</div>
+
+<div id="backBtn">
+Voltar
+</div>
 
 </div>
 
@@ -152,18 +193,22 @@ Som Radar: ATIVO
 
 var map = L.map('map').setView([-22.3145,-49.0604],17);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
-}).addTo(map);
+var lightMap = L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{maxZoom:19}
+).addTo(map);
 
-/* CORRIGE BUG COMUM DO LEAFLET */
+var darkMap = L.tileLayer(
+'https://tiles.stadiamaps.com/tiles/alidade_dark/{z}/{x}/{y}{r}.png',
+{maxZoom:19}
+);
 
 setTimeout(function(){
 map.invalidateSize();
 },500);
 
 
-/* ICON CARRO (SEU JEEP NÃO FOI ALTERADO) */
+/* JEEP (MANTIDO) */
 
 const jeepIcon = L.divIcon({
 className:'',
@@ -178,67 +223,120 @@ iconSize:[28,28],
 iconAnchor:[14,14]
 });
 
-
-/* MARKER */
-
 var marker = L.marker([-22.3145,-49.0604],{
 icon:jeepIcon
 }).addTo(map);
 
 
+/* CONTROLES */
+
+var center=true;
+var sound=true;
+var dark=false;
+
+
 /* GPS */
-
-function gpsError(err){
-console.log("Erro GPS:",err);
-}
-
-if(navigator.geolocation){
 
 navigator.geolocation.watchPosition(function(pos){
 
-var lat = pos.coords.latitude;
-var lon = pos.coords.longitude;
-var speed = pos.coords.speed || 0;
-
-/* POSIÇÃO CARRO */
+var lat=pos.coords.latitude;
+var lon=pos.coords.longitude;
+var speed=pos.coords.speed||0;
 
 marker.setLatLng([lat,lon]);
 
-/* VELOCIDADE */
+var kmh=Math.round(speed*3.6);
+document.getElementById("speedBox").innerText=kmh+" km/h";
 
-var kmh = Math.round(speed*3.6);
-document.getElementById("speedBox").innerText = kmh+" km/h";
-
-/* MAPA SEGUIR SUAVE */
-
+if(center){
 map.panTo([lat,lon]);
+}
 
-},
-gpsError,
-{
+},{
 enableHighAccuracy:true,
 maximumAge:0,
 timeout:5000
 });
 
-}
-
 
 /* MENU */
 
-document.addEventListener("DOMContentLoaded",function(){
-
 var menu=document.getElementById("menu");
 
-document.getElementById("configBtn").addEventListener("click",function(){
+document.getElementById("configBtn").onclick=function(){
 menu.style.display="block";
-});
+}
 
-document.getElementById("backBtn").addEventListener("click",function(){
+document.getElementById("backBtn").onclick=function(){
 menu.style.display="none";
-});
+}
 
-});
+
+/* MAPA LIVRE */
+
+document.getElementById("centerBtn").onclick=function(){
+
+center=!center;
+
+if(center){
+this.innerText="Mapa Seguindo";
+this.classList.add("active");
+}else{
+this.innerText="Mapa Livre";
+this.classList.remove("active");
+}
+
+}
+
+
+/* SOM */
+
+document.getElementById("soundBtn").onclick=function(){
+
+sound=!sound;
+
+if(sound){
+this.classList.add("active");
+}else{
+this.classList.remove("active");
+}
+
+}
+
+
+/* TESTAR BIP */
+
+document.getElementById("testBtn").onclick=function(){
+
+var audio=new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+audio.play();
+
+}
+
+
+/* TEMA MAPA */
+
+document.getElementById("themeBtn").onclick=function(){
+
+dark=!dark;
+
+if(dark){
+
+map.removeLayer(lightMap);
+darkMap.addTo(map);
+
+this.innerText="Tema Claro";
+
+}else{
+
+map.removeLayer(darkMap);
+lightMap.addTo(map);
+
+this.innerText="Tema Escuro";
+
+}
+
+}
 
 </script>
 
