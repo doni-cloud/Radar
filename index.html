@@ -20,8 +20,6 @@ height:100%;
 width:100%;
 }
 
-/* VELOCÍMETRO */
-
 #speedBox{
 position:absolute;
 top:12px;
@@ -33,8 +31,6 @@ border-radius:14px;
 font-size:22px;
 z-index:1000;
 }
-
-/* LIMITE VIA */
 
 #limitBox{
 position:absolute;
@@ -53,8 +49,6 @@ font-weight:bold;
 z-index:1000;
 }
 
-/* ALERTA RADAR */
-
 #radarAlert{
 position:absolute;
 top:12px;
@@ -68,18 +62,6 @@ text-align:center;
 padding:10px;
 z-index:1000;
 }
-
-#radarAlert h3{
-margin:4px;
-font-size:14px;
-}
-
-#radarAlert h2{
-margin:6px;
-font-size:28px;
-}
-
-/* CONFIGURAÇÃO */
 
 #configBtn{
 position:absolute;
@@ -96,10 +78,7 @@ font-size:28px;
 color:white;
 cursor:pointer;
 z-index:1000;
-box-shadow:0 3px 8px rgba(0,0,0,0.5);
 }
-
-/* MENU */
 
 #menu{
 position:absolute;
@@ -122,13 +101,8 @@ font-size:20px;
 cursor:pointer;
 }
 
-.active{
-background:green;
-}
-
-.off{
-background:red;
-}
+.active{background:green;}
+.off{background:red;}
 
 #backBtn{
 margin-top:30px;
@@ -147,14 +121,13 @@ cursor:pointer;
 <div id="map"></div>
 
 <div id="speedBox">0 km/h</div>
-
 <div id="limitBox">60</div>
 
 <div id="radarAlert">
-<h3 id="radarTitle">SEM RADAR</h3>
+<h3>SEM RADAR</h3>
 <hr>
-<h3 id="radarText">RADAR À FRENTE</h3>
-<h2 id="radarDist">LIVRE</h2>
+<h3>RADAR À FRENTE</h3>
+<h2>LIVRE</h2>
 </div>
 
 <div id="configBtn">⚙</div>
@@ -167,17 +140,7 @@ cursor:pointer;
 Som Radar: ATIVO
 </div>
 
-<div id="centerBtn" class="menuItem off">
-Centralizar mapa
-</div>
-
-<div id="freeBtn" class="menuItem active">
-Modo livre
-</div>
-
-<div id="backBtn">
-Voltar
-</div>
+<div id="backBtn">Voltar</div>
 
 </div>
 
@@ -194,19 +157,19 @@ maxZoom:19
 }).addTo(map);
 
 
-/* JEEP ICON */
+/* ICON CARRO */
 
 const jeepIcon = L.divIcon({
 className:'',
-html:`
-<div style="width:40px;height:40px;
+html:`<div style="
+width:28px;
+height:28px;
 background:black;
+border:4px solid white;
 border-radius:50%;
-border:3px solid white;">
-</div>
-`,
-iconSize:[40,40],
-iconAnchor:[20,20]
+"></div>`,
+iconSize:[28,28],
+iconAnchor:[14,14]
 });
 
 
@@ -215,13 +178,6 @@ iconAnchor:[20,20]
 var marker = L.marker([-22.3145,-49.0604],{
 icon:jeepIcon
 }).addTo(map);
-
-
-/* CONTROLE */
-
-var center=false;
-var soundActive=true;
-var free=true;
 
 
 /* GPS */
@@ -234,7 +190,7 @@ var lat = pos.coords.latitude;
 var lon = pos.coords.longitude;
 var speed = pos.coords.speed || 0;
 
-/* ATUALIZA CARRO */
+/* POSIÇÃO CARRO */
 
 marker.setLatLng([lat,lon]);
 
@@ -243,47 +199,22 @@ marker.setLatLng([lat,lon]);
 var kmh = Math.round(speed*3.6);
 document.getElementById("speedBox").innerText = kmh+" km/h";
 
-/* CENTRALIZA MAPA */
+/* MAPA SEMPRE SEGUIR */
 
-if(center){
-
-var offsetLat = lat + 0.0006;
-
-map.setView([offsetLat,lon],17,{
-animate:true
-});
-
-}
+map.setView([lat,lon],17);
 
 },{
 enableHighAccuracy:true,
 maximumAge:0,
-timeout:5000
+timeout:4000
 });
 
 }
 
 
-/* RADAR STATUS */
+/* ESPERAR DOM */
 
-function radarLivre(){
-
-document.getElementById("radarAlert").style.borderColor="#2ecc71";
-document.getElementById("radarTitle").innerText="SEM RADAR";
-document.getElementById("radarDist").innerText="LIVRE";
-
-}
-
-function radar500(){
-
-document.getElementById("radarAlert").style.borderColor="orange";
-document.getElementById("radarTitle").innerText="RADAR DETECTADO";
-document.getElementById("radarDist").innerText="500 m";
-
-}
-
-
-/* MENU */
+window.onload=function(){
 
 var menu=document.getElementById("menu");
 
@@ -293,51 +224,6 @@ menu.style.display="block";
 
 document.getElementById("backBtn").onclick=function(){
 menu.style.display="none";
-}
-
-
-/* SOM */
-
-document.getElementById("soundBtn").onclick=function(){
-
-soundActive=!soundActive;
-
-if(soundActive){
-this.className="menuItem active";
-this.innerText="Som Radar: ATIVO";
-}else{
-this.className="menuItem off";
-this.innerText="Som Radar: DESATIVADO";
-}
-
-}
-
-
-/* CENTRALIZAR */
-
-document.getElementById("centerBtn").onclick=function(){
-
-center=!center;
-
-if(center){
-this.className="menuItem active";
-}else{
-this.className="menuItem off";
-}
-
-}
-
-
-/* MODO LIVRE */
-
-document.getElementById("freeBtn").onclick=function(){
-
-free=!free;
-
-if(free){
-this.className="menuItem active";
-}else{
-this.className="menuItem off";
 }
 
 }
