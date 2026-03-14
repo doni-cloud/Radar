@@ -81,7 +81,7 @@ justify-content:center;
 font-size:28px;
 color:white;
 cursor:pointer;
-z-index:1000;
+z-index:3000;
 }
 
 /* MENU */
@@ -257,13 +257,13 @@ var kmh=Math.round(speed*3.6);
 document.getElementById("speedBox").innerText=kmh+" km/h";
 
 if(center){
-map.panTo([lat,lon]);
+map.setView([lat,lon], map.getZoom(), {animate:true});
 }
 
 },{
 enableHighAccuracy:true,
 maximumAge:0,
-timeout:5000
+timeout:10000
 });
 
 
@@ -271,13 +271,14 @@ timeout:5000
 
 var menu=document.getElementById("menu");
 
-document.getElementById("configBtn").onclick=function(){
+document.getElementById("configBtn").addEventListener("click",function(e){
+e.stopPropagation();
 menu.style.display="block";
-}
+});
 
 document.getElementById("backBtn").onclick=function(){
 menu.style.display="none";
-}
+};
 
 
 /* MAPA LIVRE */
