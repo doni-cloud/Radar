@@ -195,12 +195,12 @@ var lightMap = L.tileLayer(
 ).addTo(map);
 
 var darkMap = L.tileLayer(
-'https://tiles.stadiamaps.com/tiles/alidade_dark/{z}/{x}/{y}{r}.png',
+'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
 {
-  maxZoom:19
+maxZoom:19,
+subdomains:'abcd'
 }
 );
-
 // JEEP
 const jeepIcon = L.divIcon({
 className:'',
