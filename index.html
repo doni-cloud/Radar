@@ -150,94 +150,64 @@ cursor:pointer;
 <div id="configBtn">⚙</div>
 
 <div id="menu">
-
 <h2>Configurações</h2>
 
 <div class="menuGrid">
-
-<div id="centerBtn" class="menuBox active">
-Centralizar mapa
+<div id="centerBtn" class="menuBox active">Centralizar mapa</div>
+<div id="soundBtn" class="menuBox active">Som Radar</div>
+<div id="testBtn" class="menuBox">Testar Bip</div>
+<div id="themeBtn" class="menuBox">Tema Escuro</div>
 </div>
 
-<div id="soundBtn" class="menuBox active">
-Som Radar
-</div>
-
-<div id="testBtn" class="menuBox">
-Testar Bip
-</div>
-
-<div id="themeBtn" class="menuBox">
-Tema Escuro
-</div>
-
-</div>
-
-<div id="backBtn">
-Voltar
-</div>
-
+<div id="backBtn">Voltar</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 
-// MAPA (CORRIGIDO)
-var map = L.map('map');
+/* MAPA */
+
+var map = L.map('map').setView([0,0],17);
 
 var lightMap = L.tileLayer(
 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-  maxZoom:19,
-  attribution:'© OpenStreetMap'
-}
+{maxZoom:19}
 ).addTo(map);
 
 var darkMap = L.tileLayer(
 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-{
-maxZoom:19,
-subdomains:'abcd'
-}
+{maxZoom:19}
 );
-// JEEP
+
+/* JEEP */
 
 const jeepIcon = L.divIcon({
 className:'',
-html:`
-<div style="width:48px;height:70px;transform:translate(-24px,-35px);">
+html:`<div style="width:48px;height:70px;transform:translate(-24px,-35px);">
 <svg width="48" height="70" viewBox="0 0 48 70">
-
 <ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
-
 <rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
 <rect x="12" y="4" width="24" height="12" rx="6" fill="#111"/>
-
-<rect x="15" y="8" width="18" height="8" rx="3" fill="#1c1c1c"/>
-
 <circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
 <circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
-
-<rect x="18" y="50" width="12" height="5" rx="1.5" fill="#ccc"/>
-
 </svg>
-</div>
-`,
+</div>`,
 iconSize:[48,70],
 iconAnchor:[24,35]
 });
+
 var marker = L.marker([0,0],{icon:jeepIcon}).addTo(map);
 
-// CONTROLES
+/* CONTROLE */
+
 var center=true;
 var sound=true;
 var dark=false;
 
-// GPS
-let lastLat=null;
-let lastLon=null;
-let lastTime=null;
+/* GPS CORRIGIDO */
+
+let lastLat=null, lastLon=null, lastTime=null;
 
 navigator.geolocation.watchPosition(function(pos){
 
@@ -245,49 +215,34 @@ let lat = pos.coords.latitude;
 let lon = pos.coords.longitude;
 let now = Date.now();
 
-if(center){
-map.flyTo([lat,lon],17,{
-animate:true,
-duration:0.5
-});
-}
 /* POSIÇÃO */
-
 marker.setLatLng([lat,lon]);
 
-/* VELOCIDADE REAL */
+/* CENTRALIZA */
+if(center){
+map.setView([lat,lon],17);
+}
 
+/* VELOCIDADE */
+let speed = pos.coords.speed;
 let kmh = 0;
 
-if(lastLat !== null){
-
-let dist = map.distance([lastLat,lastLon],[lat,lon]); // metros
-let time = (now - lastTime)/1000; // segundos
-
-if(time > 0){
+if(speed !== null){
+kmh = speed * 3.6;
+}else if(lastLat !== null){
+let dist = map.distance([lastLat,lastLon],[lat,lon]);
+let time = (now-lastTime)/1000;
+if(time>0){
 kmh = (dist/time)*3.6;
 }
-
 }
 
-/* FILTRO (evita bug de salto) */
 kmh = Math.min(kmh,180);
-
 document.getElementById("speedBox").innerText = Math.round(kmh)+" km/h";
 
-/* SALVA ÚLTIMO */
 lastLat = lat;
 lastLon = lon;
 lastTime = now;
-
-/* MOVIMENTO SUAVE */
-
-if(center){
-map.flyTo([lat,lon],17,{
-animate:true,
-duration:0.5
-});
-}
 
 },{
 enableHighAccuracy:true,
@@ -295,27 +250,8 @@ maximumAge:0,
 timeout:10000
 });
 
-// PRIMEIRA VEZ
-if(!map._loaded){
-  map.setView([lat,lon],17);
-}o
+/* MENU */
 
-marker.setLatLng([lat,lon]);
-
-let kmh = Math.round(speed*3.6);
-document.getElementById("speedBox").innerText = kmh+" km/h";
-
-if(center){
-  map.setView([lat,lon],17);
-}
-
-},function(err){
-console.log("Erro GPS:",err);
-},{
-enableHighAccuracy:true
-});
-
-// MENU
 var menu=document.getElementById("menu");
 
 document.getElementById("configBtn").onclick=function(){
@@ -326,26 +262,22 @@ document.getElementById("backBtn").onclick=function(){
 menu.style.display="none";
 };
 
-// CENTRALIZAR
 document.getElementById("centerBtn").onclick=function(){
 center=!center;
 this.classList.toggle("active");
 };
 
-// SOM
 document.getElementById("soundBtn").onclick=function(){
 sound=!sound;
 this.classList.toggle("active");
 };
 
-// TESTE SOM
 document.getElementById("testBtn").onclick=function(){
 if(sound){
 new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
 }
 };
 
-// TEMA
 document.getElementById("themeBtn").onclick=function(){
 dark=!dark;
 
@@ -358,10 +290,7 @@ lightMap.addTo(map);
 }
 };
 
-// CORREÇÃO FINAL
-setTimeout(()=>{
-map.invalidateSize();
-},500);
+setTimeout(()=>{map.invalidateSize();},500);
 
 </script>
 
