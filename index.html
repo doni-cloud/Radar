@@ -9,7 +9,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-
 html,body{
 margin:0;
 padding:0;
@@ -23,7 +22,6 @@ width:100%;
 }
 
 /* HUD */
-
 #speedBox{
 position:absolute;
 top:12px;
@@ -67,8 +65,7 @@ padding:10px;
 z-index:1000;
 }
 
-/* BOTÃO CONFIG */
-
+/* CONFIG */
 #configBtn{
 position:absolute;
 bottom:20px;
@@ -87,7 +84,6 @@ z-index:9999;
 }
 
 /* MENU */
-
 #menu{
 position:absolute;
 top:0;
@@ -129,7 +125,6 @@ border-radius:12px;
 text-align:center;
 cursor:pointer;
 }
-
 </style>
 </head>
 
@@ -167,47 +162,41 @@ cursor:pointer;
 <script>
 
 /* MAPA */
-
-var map = L.map('map').setView([0,0],17);
+var map = L.map('map');
 
 var lightMap = L.tileLayer(
 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{maxZoom:19}
+{ maxZoom:19 }
 ).addTo(map);
 
 var darkMap = L.tileLayer(
-'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-{maxZoom:19}
+'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+{ maxZoom:19 }
 );
 
 /* JEEP */
-
 const jeepIcon = L.divIcon({
 className:'',
 html:`<div style="width:48px;height:70px;transform:translate(-24px,-35px);">
-<svg width="48" height="70" viewBox="0 0 48 70">
+<svg width="48" height="70">
 <ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
 <rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
-<rect x="12" y="4" width="24" height="12" rx="6" fill="#111"/>
 <circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
 <circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
-</svg>
-</div>`,
+</svg></div>`,
 iconSize:[48,70],
 iconAnchor:[24,35]
 });
 
 var marker = L.marker([0,0],{icon:jeepIcon}).addTo(map);
 
-/* CONTROLE */
+/* CONTROLES */
+var center = true;
+var sound = true;
+var dark = false;
 
-var center=true;
-var sound=true;
-var dark=false;
-
-/* GPS CORRIGIDO */
-
-let lastLat=null, lastLon=null, lastTime=null;
+/* GPS */
+let last = null;
 
 navigator.geolocation.watchPosition(function(pos){
 
@@ -215,53 +204,52 @@ let lat = pos.coords.latitude;
 let lon = pos.coords.longitude;
 let now = Date.now();
 
-/* POSIÇÃO */
+/* posição */
 marker.setLatLng([lat,lon]);
 
-/* CENTRALIZA */
+/* centralizar */
 if(center){
 map.setView([lat,lon],17);
 }
 
-/* VELOCIDADE */
-let speed = pos.coords.speed;
+/* velocidade real */
 let kmh = 0;
 
-if(speed !== null){
-kmh = speed * 3.6;
-}else if(lastLat !== null){
-let dist = map.distance([lastLat,lastLon],[lat,lon]);
-let time = (now-lastTime)/1000;
-if(time>0){
+if(last){
+let dist = map.distance(last.coords,[lat,lon]);
+let time = (now - last.time)/1000;
+
+if(time > 0){
 kmh = (dist/time)*3.6;
 }
 }
 
 kmh = Math.min(kmh,180);
-document.getElementById("speedBox").innerText = Math.round(kmh)+" km/h";
 
-lastLat = lat;
-lastLon = lon;
-lastTime = now;
+document.getElementById("speedBox").innerText =
+Math.round(kmh)+" km/h";
+
+last = {
+coords:[lat,lon],
+time:now
+};
 
 },{
-enableHighAccuracy:true,
-maximumAge:0,
-timeout:10000
+enableHighAccuracy:true
 });
 
 /* MENU */
-
 var menu=document.getElementById("menu");
 
-document.getElementById("configBtn").onclick=function(){
+document.getElementById("configBtn").onclick = ()=>{
 menu.style.display="block";
 };
 
-document.getElementById("backBtn").onclick=function(){
+document.getElementById("backBtn").onclick = ()=>{
 menu.style.display="none";
 };
 
+/* BOTÕES */
 document.getElementById("centerBtn").onclick=function(){
 center=!center;
 this.classList.toggle("active");
@@ -290,7 +278,8 @@ lightMap.addTo(map);
 }
 };
 
-setTimeout(()=>{map.invalidateSize();},500);
+/* FIX FINAL */
+setTimeout(()=>map.invalidateSize(),500);
 
 </script>
 
