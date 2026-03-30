@@ -265,23 +265,6 @@ new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
 }
 };
 
-/* TEMA */
-
-document.getElementById("themeBtn").onclick = function(){
-
-dark = !dark;
-
-if(dark){
-map.removeLayer(lightMap);
-darkMap.addTo(map);
-this.innerText = "Tema Claro";
-}else{
-map.removeLayer(darkMap);
-lightMap.addTo(map);
-this.innerText = "Tema Escuro";
-}
-
-};
 
 /* CORREÇÃO VISUAL */
 
