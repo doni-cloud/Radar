@@ -162,7 +162,9 @@ cursor:pointer;
 <script>
 
 /* MAPA */
-var map = L.map('map');
+<script>
+
+var map = L.map('map').setView([-22.3145,-49.0604],17);
 
 var lightMap = L.tileLayer(
 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -170,25 +172,33 @@ var lightMap = L.tileLayer(
 ).addTo(map);
 
 var darkMap = L.tileLayer(
-'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-{ maxZoom:19 }
+'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+{
+maxZoom:19,
+subdomains:'abcd'
+}
 );
 
 /* JEEP */
+
 const jeepIcon = L.divIcon({
 className:'',
 html:`<div style="width:48px;height:70px;transform:translate(-24px,-35px);">
-<svg width="48" height="70">
+<svg width="48" height="70" viewBox="0 0 48 70">
 <ellipse cx="24" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.45)"/>
 <rect x="8" y="10" width="32" height="42" rx="9" fill="#0b0b0b"/>
+<rect x="12" y="4" width="24" height="12" rx="6" fill="#111"/>
+<rect x="15" y="8" width="18" height="8" rx="3" fill="#1c1c1c"/>
 <circle cx="14" cy="46" r="3.2" fill="#ff2a2a"/>
 <circle cx="34" cy="46" r="3.2" fill="#ff2a2a"/>
-</svg></div>`,
+<rect x="18" y="50" width="12" height="5" rx="1.5" fill="#ccc"/>
+</svg>
+</div>`,
 iconSize:[48,70],
 iconAnchor:[24,35]
 });
 
-var marker = L.marker([0,0],{icon:jeepIcon}).addTo(map);
+var marker = L.marker([-22.3145,-49.0604],{icon:jeepIcon}).addTo(map);
 
 /* CONTROLES */
 var center = true;
@@ -196,90 +206,88 @@ var sound = true;
 var dark = false;
 
 /* GPS */
-let last = null;
 
 navigator.geolocation.watchPosition(function(pos){
 
 let lat = pos.coords.latitude;
 let lon = pos.coords.longitude;
-let now = Date.now();
+let speed = pos.coords.speed || 0;
 
 /* posição */
 marker.setLatLng([lat,lon]);
 
-/* centralizar */
+/* velocidade real */
+let kmh = Math.round(speed * 3.6);
+document.getElementById("speedBox").innerText = kmh + " km/h";
+
+/* seguir */
 if(center){
 map.setView([lat,lon],17);
 }
 
-/* velocidade real */
-let kmh = 0;
-
-if(last){
-let dist = map.distance(last.coords,[lat,lon]);
-let time = (now - last.time)/1000;
-
-if(time > 0){
-kmh = (dist/time)*3.6;
-}
-}
-
-kmh = Math.min(kmh,180);
-
-document.getElementById("speedBox").innerText =
-Math.round(kmh)+" km/h";
-
-last = {
-coords:[lat,lon],
-time:now
-};
-
 },{
-enableHighAccuracy:true
+enableHighAccuracy:true,
+maximumAge:0,
+timeout:10000
 });
 
 /* MENU */
-var menu=document.getElementById("menu");
 
-document.getElementById("configBtn").onclick = ()=>{
-menu.style.display="block";
+var menu = document.getElementById("menu");
+
+document.getElementById("configBtn").onclick = function(){
+menu.style.display = "block";
 };
 
-document.getElementById("backBtn").onclick = ()=>{
-menu.style.display="none";
+document.getElementById("backBtn").onclick = function(){
+menu.style.display = "none";
 };
 
-/* BOTÕES */
-document.getElementById("centerBtn").onclick=function(){
-center=!center;
+/* CENTRALIZAR */
+
+document.getElementById("centerBtn").onclick = function(){
+center = !center;
 this.classList.toggle("active");
 };
 
-document.getElementById("soundBtn").onclick=function(){
-sound=!sound;
+/* SOM */
+
+document.getElementById("soundBtn").onclick = function(){
+sound = !sound;
 this.classList.toggle("active");
 };
 
-document.getElementById("testBtn").onclick=function(){
+/* TESTE */
+
+document.getElementById("testBtn").onclick = function(){
 if(sound){
 new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
 }
 };
 
-document.getElementById("themeBtn").onclick=function(){
-dark=!dark;
+/* TEMA */
+
+document.getElementById("themeBtn").onclick = function(){
+
+dark = !dark;
 
 if(dark){
 map.removeLayer(lightMap);
 darkMap.addTo(map);
+this.innerText = "Tema Claro";
 }else{
 map.removeLayer(darkMap);
 lightMap.addTo(map);
+this.innerText = "Tema Escuro";
 }
+
 };
 
-/* FIX FINAL */
-setTimeout(()=>map.invalidateSize(),500);
+/* CORREÇÃO VISUAL */
+
+setTimeout(function(){
+map.invalidateSize();
+},500);
 
 </script>
 
