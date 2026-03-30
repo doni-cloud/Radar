@@ -21,7 +21,6 @@ height:100%;
 width:100%;
 }
 
-/* HUD */
 #speedBox{
 position:absolute;
 top:12px;
@@ -65,7 +64,6 @@ padding:10px;
 z-index:1000;
 }
 
-/* CONFIG */
 #configBtn{
 position:absolute;
 bottom:20px;
@@ -83,7 +81,6 @@ cursor:pointer;
 z-index:9999;
 }
 
-/* MENU */
 #menu{
 position:absolute;
 top:0;
@@ -162,7 +159,6 @@ cursor:pointer;
 <script>
 
 /* MAPA */
-<script>
 
 var map = L.map('map').setView([-22.3145,-49.0604],17);
 
@@ -213,14 +209,11 @@ let lat = pos.coords.latitude;
 let lon = pos.coords.longitude;
 let speed = pos.coords.speed || 0;
 
-/* posição */
 marker.setLatLng([lat,lon]);
 
-/* velocidade real */
 let kmh = Math.round(speed * 3.6);
 document.getElementById("speedBox").innerText = kmh + " km/h";
 
-/* seguir */
 if(center){
 map.setView([lat,lon],17);
 }
@@ -265,8 +258,23 @@ new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
 }
 };
 
+/* TEMA */
 
-/* CORREÇÃO VISUAL */
+document.getElementById("themeBtn").onclick = function(){
+
+dark = !dark;
+
+if(dark){
+map.removeLayer(lightMap);
+darkMap.addTo(map);
+this.innerText = "Tema Claro";
+}else{
+map.removeLayer(darkMap);
+lightMap.addTo(map);
+this.innerText = "Tema Escuro";
+}
+
+};
 
 setTimeout(function(){
 map.invalidateSize();
